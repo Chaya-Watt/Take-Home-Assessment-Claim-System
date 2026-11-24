@@ -1,0 +1,13 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Infrastructure: EF Core (SQLite), JWT, Kafka, outbox, file storage. Implements Application ports. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaimSystem.Application\ClaimSystem.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+</Project>

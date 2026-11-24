@@ -1,0 +1,8 @@
+@host = http://localhost:5106
+
+### Health check
+GET {{host}}/health
+
+### OpenAPI document (Development only) — interactive UI at {{host}}/scalar
+GET {{host}}/openapi/v1.json
+Accept: application/json

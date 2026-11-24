@@ -1,0 +1,140 @@
+# แผนงาน Backend — ระบบ Claim ประกัน (.NET 10 + SQLite + Kafka)
+
+## สถานะ
+| Phase | หัวข้อ | สถานะ |
+|---|---|---|
+| 0 | Scaffolding | ✅ เสร็จ |
+| 1 | Domain model + state machine | ⏳ ถัดไป |
+| 2 | Persistence (EF Core + SQLite) | — |
+| 3 | Authentication / Authorization | — |
+| 4 | Claimant: แจ้งเหตุและติดตามสถานะ | — |
+| 5 | Staff: รับเคลมและประเมิน | — |
+| 6 | ตัดสินผลและจ่ายค่าสินไหม | — |
+| 7 | Kafka: Outbox + consumers | — |
+| 8 | Reporting | — |
+| 9 | Hardening + เอกสาร | — |
+
+## ข้อตกลงหลัก
+- **Modular monolith** (Web API ตัวเดียว) + **Kafka เป็น event bus** สำหรับ domain events (transactional outbox)
+- **Minimal APIs**: แยกไฟล์ endpoint ตาม feature และจัดกลุ่มด้วย `MapGroup`
+- **JWT ที่ระบบออกเอง** แยก role ได้แก่ `Claimant`, `Staff`, `Supervisor`
+- **Staff อนุมัติหรือปฏิเสธเคลมได้เองทุกเคส** (ไม่มีวงเงินอนุมัติ และไม่มีขั้นรอ Supervisor อนุมัติ)
+- **Supervisor** ทำได้ทุกอย่างเหมือน Staff และดู dashboard workload/performance ของ**ทั้งทีม**ได้ ส่วน Staff ทั่วไปดูได้เฉพาะของตัวเอง
+- **Setup ให้น้อยที่สุด**: config, package และ tooling จะเพิ่มเฉพาะใน phase ที่ได้ใช้จริง
+
+## โครงสร้าง (Clean Architecture ตามแนวทางของ Microsoft)
+```
+backend/
+  ClaimSystem.slnx, Directory.Build.props, global.json (เปิด MTP test runner)
+  src/ClaimSystem.Domain          entities, state machine, domain events (ไม่มี dependency)
+  src/ClaimSystem.Application     use cases แยกตาม feature + interfaces (ports)
+  src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka, file storage
+  src/ClaimSystem.Api             composition root + Minimal API endpoints
+  tests/ClaimSystem.UnitTests          (สร้างใน Phase 1)
+  tests/ClaimSystem.IntegrationTests   WebApplicationFactory
+frontend/                          Angular 22 (ทำหลัง BE)
+```
+
+## Domain หลัก
+- **User**: Id, Email, PasswordHash, FullName, Role
+- **Policy** (seed data): PolicyNumber, `HolderId` (→ User.Id ของผู้ถือกรมธรรม์), ProductType (`Motor` | `Health` | `Property`), SumInsured, StartDate/EndDate
+- **Claim**: ClaimNumber (`CLM-2026-000001`), `ClaimantId` (→ User.Id), PolicyId, IncidentType, IncidentDate, Location, Description, ClaimedAmount, AssessedAmount, AssessmentSummary, ApprovedAmount, Status, `AssignedStaffId` (→ User.Id), SubmittedAt/AssignedAt/DecidedAt/PaidAt, DecisionReason, `Version` (concurrency token)
+  - กฎ: `Policy.HolderId == ClaimantId` คือแจ้งเคลมได้เฉพาะกรมธรรม์ของตัวเอง
+- **ClaimDocument**: ไฟล์แนบ (เก็บไฟล์บน disk และเก็บ metadata ใน DB)
+- **InformationRequest**: Message, RequestedBy, DueDate, Status (Open/Responded), ResponseText, RespondedAt
+- **ClaimStatusHistory**: audit trail ของทุก transition ใช้ทำ timeline และคำนวณ performance
+- **Payment**, **Notification**, **OutboxMessage**, **ProcessedMessage**
+
+จำนวนเงินเก็บเป็น `long` หน่วยสตางค์ (SQLite ทำ SUM/ORDER BY กับ `decimal` ฝั่ง DB ไม่ได้)
+
+### IncidentType ตาม ProductType
+| ProductType | IncidentType |
+|---|---|
+| Motor | `Collision`, `Theft`, `Flood`, `Glass` |
+| Health | `Illness`, `Accident`, `Hospitalization` |
+| Property | `Fire`, `Flood`, `Burglary`, `WaterDamage` |
+
+### Claim state machine
+```
+Submitted ──staff assign──▶ UnderReview ──requestInfo──▶ PendingInformation
+                                ▲                               │
+                                └──────claimant responds────────┘
+UnderReview ──assess──▶ Assessed
+Assessed ──approve (ApprovedAmount ≤ AssessedAmount ≤ SumInsured)──▶ Approved ──pay──▶ Paid
+UnderReview / Assessed ──reject (ต้องระบุเหตุผล)──▶ Rejected
+Submitted ──claimant withdraw──▶ Withdrawn
+```
+Transition ทั้งหมดอยู่ใน `Claim` aggregate ถ้า transition ไม่ถูกต้องจะ throw `DomainException` ทุก transition จะบันทึก history และ raise domain event
+
+---
+
+## กติกาการทำงานทุก phase
+1. ทำทีละ phase และให้ผู้ใช้ review ก่อนเริ่ม phase ถัดไป
+2. ทุก phase ต้องมี test ของตัวเอง
+3. Gate ก่อนปิด phase (รันใน `backend/`): `dotnet build -warnaserror` และ `dotnet test` ต้องผ่านทั้งหมด
+4. อัปเดตตารางสถานะด้านบน แล้ว commit แยกต่อ phase
+
+## รายละเอียดแต่ละ Phase
+
+### Phase 0 — Scaffolding ✅
+- Solution `.slnx`, 4 src projects + integration test project, project references ตาม Clean Architecture
+- Api: OpenAPI + Scalar (`/scalar`), `/health`, ProblemDetails, CORS สำหรับ `http://localhost:4200`
+- `global.json` เปิด Microsoft.Testing.Platform (บังคับบน .NET 10 SDK สำหรับ xUnit v3)
+- Tests: `GET /health` ได้ 200 และ route ที่ไม่มีอยู่ได้ 404 เป็น ProblemDetails
+- *ปรับจากแผนเดิม*: ย้าย unit test project ไปสร้างใน Phase 1 และย้าย `docker-compose.yml` ไป Phase 7
+
+### Phase 1 — Domain model และ state machine
+- สร้าง `tests/ClaimSystem.UnitTests`
+- Entities, enums, mapping IncidentType ↔ ProductType, `Claim` aggregate พร้อม transition methods
+- Domain events: `ClaimSubmitted`, `ClaimAssigned`, `InformationRequested`, `InformationProvided`, `ClaimAssessed`, `ClaimApproved`, `ClaimRejected`, `ClaimPaid`, `ClaimWithdrawn`
+- Tests: transition ที่ถูกและผิดทุกเส้น, กฎจำนวนเงิน, IncidentType
+
+### Phase 2 — Persistence (EF Core + SQLite)
+- `ClaimDbContext`, entity configurations, concurrency token `Version`
+- Migration แรก + auto-migrate ตอน dev, seed: claimant 2 คน (มี policy), staff 2 คน, supervisor 1 คน
+- ตัวสร้าง ClaimNumber
+- Tests: migration, seed, concurrency conflict, ClaimNumber ไม่ซ้ำ
+
+### Phase 3 — Authentication และ Authorization
+- `POST /api/auth/register` (Claimant เท่านั้น), `POST /api/auth/login`, `GET /api/auth/me`
+- `PasswordHasher<User>`, JWT (`JwtBearer`), policies `ClaimantOnly` / `StaffOrSupervisor` / `SupervisorOnly`, `ICurrentUser`
+- Tests: register/login สำเร็จและล้มเหลว, 401, 403
+
+### Phase 4 — Claimant: แจ้งเหตุและติดตามสถานะ
+- `GET /api/policies/mine`
+- `POST /api/claims`: validate ความเป็นเจ้าของ policy, ช่วงคุ้มครอง, IncidentType และยอดไม่เกินทุนประกัน
+- `GET /api/claims/mine` (filter + pagination), `GET /api/claims/{id}` (รายละเอียด + timeline + ผลพิจารณา)
+- `POST /api/claims/{id}/documents`, `GET .../documents/{docId}`, `POST /api/claims/{id}/withdraw`
+- Tests: flow แจ้งเหตุ → ดูรายการ → ดูรายละเอียด และ ownership check
+
+### Phase 5 — Staff: รับเคลมและตรวจสอบ/ประเมิน
+- `GET /api/staff/claims` (queue: unassigned / assignedToMe, filter + pagination)
+- `POST /api/staff/claims/{id}/assign` (ถ้ามีคนรับไปแล้วได้ 409), `GET /api/staff/claims/{id}`
+- ขอข้อมูลเพิ่ม: `POST /api/staff/claims/{id}/information-requests` และ claimant ตอบผ่าน `POST /api/claims/{id}/information-requests/{reqId}/response`
+- `POST /api/staff/claims/{id}/assessment`
+- Tests: flow รับงาน → ขอข้อมูล → claimant ตอบ → ประเมิน
+
+### Phase 6 — ตัดสินผลและจ่ายค่าสินไหม
+- `POST /api/staff/claims/{id}/approve`, `.../reject` (ต้องมีเหตุผล), `.../pay` (สร้าง reference แบบ mock)
+- Tests: happy path จนถึง Paid และ rejection path
+
+### Phase 7 — Kafka: Outbox + Event consumers
+- `docker-compose.yml`: Kafka (KRaft) + kafka-ui
+- SaveChanges interceptor เขียน `OutboxMessage`, `OutboxPublisher` publish ไป `claims.events` (key = ClaimId) ด้วย `Confluent.Kafka`
+- `NotificationConsumer` (idempotent ด้วย `ProcessedMessage`), `GET /api/notifications`, `POST /api/notifications/{id}/read`
+- `Kafka:Enabled=false` ใช้ in-process bus (ใช้ใน tests)
+- Tests: outbox, idempotency, อนุมัติแล้ว claimant ได้ notification
+
+### Phase 8 — Reporting
+- `GET /api/reports/me` (Staff), `GET /api/reports/team/workload` และ `GET /api/reports/team/performance?from=&to=` (Supervisor)
+- Tests: ตัวเลขจาก seed scenario ถูกต้อง
+
+### Phase 9 — Hardening และเอกสาร
+- Request validation, logging, ตรวจ error response ให้รูปแบบเดียวกัน
+- `.http` file ครบทุก endpoint, README (วิธีรัน, seed accounts, event catalog)
+
+## Verification (end-to-end)
+1. `cd backend && dotnet build -warnaserror && dotnet test`
+2. `docker compose up -d` แล้ว `dotnet run --project src/ClaimSystem.Api` และเปิด `/scalar`
+3. ไล่ flow: แจ้งเหตุ → รับงาน → ขอข้อมูล → ตอบ → ประเมิน → อนุมัติ → จ่าย → claimant เห็น Paid และได้ notification → supervisor ดู dashboard
+4. เช็ค kafka-ui ว่าใน topic `claims.events` มี event ครบตามลำดับ
