@@ -10,6 +10,8 @@ Insurance claim system for two groups of users:
 | `backend/` | .NET 10 Minimal API, EF Core + SQLite, JWT | Done |
 | `frontend/` | Angular 22 (signals, Signal Forms), Pico.css | Done |
 
+Built with an AI assistant (Claude Code), one reviewed phase at a time. What was asked, accepted, challenged and overridden is logged in the **[AI working journal](docs/ai-journal.md)** (Thai).
+
 ## Quick start
 
 Requires the .NET 10 SDK and Node.js 22.22+ / 24.15+ (details below). Two terminals:
@@ -258,4 +260,11 @@ Kept out on purpose to match the brief:
 3. This doesn't need to be real-time. Decoupling means the claim API never waits on email/SMS/push, and new channels can be added without touching the claim flow.
 4. To guarantee no event is lost if Kafka is down, write events to an **outbox table** in the same transaction as the claim and publish them from a background worker.
 
-The detailed phase-by-phase plans and decisions are in [docs/backend-plan.md](docs/backend-plan.md) and [docs/frontend-plan.md](docs/frontend-plan.md) (Thai).
+## Documentation
+
+| Document | Contents |
+|---|---|
+| [docs/ai-journal.md](docs/ai-journal.md) | AI working journal: tools and MCP servers used, how the AI was prompted, what was accepted, challenged and overridden (Thai) |
+| [docs/backend-plan.md](docs/backend-plan.md) | Backend plan, domain model and phase-by-phase notes (Thai) |
+| [docs/frontend-plan.md](docs/frontend-plan.md) | Frontend plan, phase notes and the manual test checklist (Thai) |
+| [CLAUDE.md](CLAUDE.md), [frontend/CLAUDE.md](frontend/CLAUDE.md) | Instructions the AI followed: commands, conventions, working agreement, Angular rules |
