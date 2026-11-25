@@ -3,7 +3,7 @@
 Insurance claim system (take-home assessment). Two user groups: **Claimants** (report incidents, track claims, answer info requests, receive decisions) and **Claims staff** (pick up, assess, approve/reject, pay; supervisors also see team workload/performance).
 
 - `backend/` — .NET 10 Web API, SQLite (Kafka notifications only if time permits). **Current focus.**
-- `frontend/` — Angular 22. Not started; planned after the backend.
+- `frontend/` — Angular 22. In progress on `feat/frontend`. Angular rules live in `frontend/CLAUDE.md`; the Angular CLI MCP server is configured in `.mcp.json`.
 - `docs/backend-plan.md` — approved backend plan, domain model, and phase status. Read it before starting a phase.
 
 ## Commands (run from `backend/`)
