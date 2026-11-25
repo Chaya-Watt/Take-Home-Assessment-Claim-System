@@ -1,8 +1,6 @@
 using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
-using System.Text.Json;
-using System.Text.Json.Serialization;
 using ClaimSystem.Application.Auth;
 using ClaimSystem.Domain.Users;
 using ClaimSystem.Infrastructure.Persistence;
@@ -14,11 +12,6 @@ namespace ClaimSystem.IntegrationTests.Auth;
 [Collection(ApiCollection.Name)]
 public class AuthTests(WebApplicationFactory<Program> factory)
 {
-    private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web)
-    {
-        Converters = { new JsonStringEnumConverter() },
-    };
-
     private readonly HttpClient _client = factory.CreateClient();
 
     private static CancellationToken CancellationToken => TestContext.Current.CancellationToken;
@@ -151,7 +144,5 @@ public class AuthTests(WebApplicationFactory<Program> factory)
         return _client.SendAsync(request, CancellationToken);
     }
 
-    private static async Task<T> ReadAsync<T>(HttpResponseMessage response) =>
-        await response.Content.ReadFromJsonAsync<T>(Json, CancellationToken)
-        ?? throw new InvalidOperationException("Empty response body.");
+    private static Task<T> ReadAsync<T>(HttpResponseMessage response) => response.ReadAsync<T>(); // TestApi
 }

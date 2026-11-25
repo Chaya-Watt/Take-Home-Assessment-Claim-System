@@ -22,12 +22,13 @@ Seeded accounts (password `Password123!`): `claimant1@`, `claimant2@`, `staff1@`
 ```
 src/ClaimSystem.Domain          entities, state machine, domain events — no dependencies
 src/ClaimSystem.Application     use cases by feature + ports (interfaces); DI abstractions only, no ASP.NET/EF
-src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka, file storage — implements Application ports
+src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka — implements Application ports
 src/ClaimSystem.Api             composition root + Minimal API endpoints
 tests/ClaimSystem.UnitTests          domain rules (ClaimFixtures builds claims in any status)
-tests/ClaimSystem.IntegrationTests   WebApplicationFactory<Program>, shared via [Collection(ApiCollection.Name)]
+tests/ClaimSystem.IntegrationTests   WebApplicationFactory<Program>, shared via [Collection(ApiCollection.Name)]; TestApi.CreateClientForAsync(email) logs in
 ```
 Domain methods take `now` (UTC) as a parameter instead of reading the clock, and throw `DomainException` with a `Code` from `DomainErrors`.
+Timestamps are stored and returned as UTC (the frontend converts for display); date rules use the Bangkok calendar via `BusinessCalendar.Today(now)`.
 Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `DependencyInjection.cs`.
 
 ## Conventions
@@ -43,5 +44,6 @@ Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `Depe
 ## Working agreement
 - Work **one phase at a time** (see `docs/backend-plan.md`). Each phase adds its own tests and must pass `dotnet build -warnaserror` + `dotnet test` before it is done; then stop for review.
 - Keep setup minimal: add config/tooling/packages only in the phase that needs them.
+- Keep scope to what the brief asks (it is a take-home): no file uploads; Kafka stays a simple publish + one consumer.
 - Edit files with editor tools so changes are visible as diffs; use the shell for build/test.
 - Update the phase status table in `docs/backend-plan.md` when a phase completes.

@@ -2,6 +2,7 @@ using System.Text;
 using ClaimSystem.Application.Auth;
 using ClaimSystem.Application.Claims;
 using ClaimSystem.Application.Common;
+using ClaimSystem.Application.Policies;
 using ClaimSystem.Application.Users;
 using ClaimSystem.Infrastructure.Auth;
 using ClaimSystem.Infrastructure.Persistence;
@@ -49,6 +50,8 @@ public static class DependencyInjection
 
         services.AddScoped<IUnitOfWork>(sp => sp.GetRequiredService<ClaimDbContext>());
         services.AddScoped<IUserRepository, UserRepository>();
+        services.AddScoped<IPolicyRepository, PolicyRepository>();
+        services.AddScoped<IClaimRepository, ClaimRepository>();
         services.AddScoped<IClaimNumberGenerator, ClaimNumberGenerator>();
     }
 

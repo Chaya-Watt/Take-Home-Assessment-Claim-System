@@ -64,7 +64,7 @@ public sealed class Claim
             throw new DomainException(DomainErrors.NotAllowed, "You can only claim against your own policy.");
         }
 
-        if (incidentDate > DateOnly.FromDateTime(now))
+        if (incidentDate > BusinessCalendar.Today(now))
         {
             throw Invalid("Incident date cannot be in the future.");
         }
@@ -140,7 +140,7 @@ public sealed class Claim
         EnsureStatus("request information for", ClaimStatus.UnderReview);
         EnsureAssignedTo(staffId);
         RequireText(message, "Message");
-        if (dueDate < DateOnly.FromDateTime(now))
+        if (dueDate < BusinessCalendar.Today(now))
         {
             throw Invalid("Due date cannot be in the past.");
         }

@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using ClaimSystem.Api.Auth;
+using ClaimSystem.Api.Claims;
 using ClaimSystem.Api.Errors;
+using ClaimSystem.Api.Policies;
 using ClaimSystem.Application;
 using ClaimSystem.Infrastructure;
 using ClaimSystem.Infrastructure.Persistence;
@@ -46,5 +48,7 @@ if (app.Environment.IsDevelopment())
 
 app.MapHealthChecks("/health");
 app.MapAuthEndpoints();
+app.MapPolicyEndpoints();
+app.MapClaimantClaimEndpoints();
 
 app.Run();

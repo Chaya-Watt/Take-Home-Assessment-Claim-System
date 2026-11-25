@@ -4,11 +4,10 @@ obj/
 *.user
 TestResults/
 
-# SQLite database files and uploaded documents (created at runtime)
+# SQLite database files (created at runtime)
 *.db
 *.db-shm
 *.db-wal
-backend/src/ClaimSystem.Api/uploads/
 
 # Node / Angular
 node_modules/

@@ -35,6 +35,19 @@ public class SubmitClaimTests
         AssertValidationError(() => Submit(incidentDate: Today.AddDays(1)));
 
     [Fact]
+    public void Submit_EarlyMorningInBangkok_AcceptsTodaysBangkokDate()
+    {
+        // 2026-06-15 20:00 UTC is 2026-06-16 03:00 in Bangkok: the UTC date is still the 15th.
+        var now = new DateTime(2026, 6, 15, 20, 0, 0, DateTimeKind.Utc);
+
+        var claim = Claim.Submit(
+            "CLM-2026-000001", ClaimantId, MotorPolicy(), IncidentType.Collision, new DateOnly(2026, 6, 16),
+            "Bangkok", "Hit a pole", 10_000_00, now);
+
+        Assert.Equal(new DateOnly(2026, 6, 16), claim.IncidentDate);
+    }
+
+    [Fact]
     public void Submit_IncidentOutsidePolicyPeriod_Throws() =>
         AssertValidationError(() => Submit(incidentDate: new DateOnly(2025, 12, 31)));
 

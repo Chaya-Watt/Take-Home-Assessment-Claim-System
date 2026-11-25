@@ -7,15 +7,17 @@
 | 1 | Domain model + state machine | ✅ เสร็จ |
 | 2 | Persistence (EF Core + SQLite) | ✅ เสร็จ |
 | 3 | Authentication / Authorization | ✅ เสร็จ |
-| 4 | Claimant: แจ้งเหตุและติดตามสถานะ | ⏳ ถัดไป |
-| 5 | Staff: รับเคลมและประเมิน | — |
+| 4 | Claimant: แจ้งเหตุและติดตามสถานะ | ✅ เสร็จ |
+| 5 | Staff: รับเคลมและประเมิน | ⏳ ถัดไป |
 | 6 | ตัดสินผลและจ่ายค่าสินไหม | — |
-| 7 | Kafka: Outbox + consumers | — |
+| 7 | Kafka: events + notification consumer | — |
 | 8 | Reporting | — |
 | 9 | Hardening + เอกสาร | — |
 
 ## ข้อตกลงหลัก
-- **Modular monolith** (Web API ตัวเดียว) + **Kafka เป็น event bus** สำหรับ domain events (transactional outbox)
+- **Modular monolith** (Web API ตัวเดียว) + **Kafka เป็น event bus** สำหรับ claim events (แบบเรียบง่าย ดู Phase 7)
+- **Scope ให้พอดีกับงานส่ง test**: ทำเฉพาะที่โจทย์ขอ ตัดการแนบไฟล์ออก (claimant ตอบคำขอข้อมูลเป็นข้อความ)
+- **เวลา**: timestamp เก็บและส่งเป็น UTC ให้ FE แปลงเป็นเวลาเครื่องเอง ส่วนกฎที่เกี่ยวกับ "วันนี้" ใช้ปฏิทิน `Asia/Bangkok` (`BusinessCalendar`)
 - **Minimal APIs**: แยกไฟล์ endpoint ตาม feature และจัดกลุ่มด้วย `MapGroup`
 - **JWT ที่ระบบออกเอง** แยก role ได้แก่ `Claimant`, `Staff`, `Supervisor`
 - **Staff อนุมัติหรือปฏิเสธเคลมได้เองทุกเคส** (ไม่มีวงเงินอนุมัติ และไม่มีขั้นรอ Supervisor อนุมัติ)
@@ -28,7 +30,7 @@ backend/
   ClaimSystem.slnx, Directory.Build.props, global.json (เปิด MTP test runner)
   src/ClaimSystem.Domain          entities, state machine, domain events (ไม่มี dependency)
   src/ClaimSystem.Application     use cases แยกตาม feature + interfaces (ports)
-  src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka, file storage
+  src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka
   src/ClaimSystem.Api             composition root + Minimal API endpoints
   tests/ClaimSystem.UnitTests          (สร้างใน Phase 1)
   tests/ClaimSystem.IntegrationTests   WebApplicationFactory
@@ -40,10 +42,9 @@ frontend/                          Angular 22 (ทำหลัง BE)
 - **Policy** (seed data): PolicyNumber, `HolderId` (→ User.Id ของผู้ถือกรมธรรม์), ProductType (`Motor` | `Health` | `Property`), SumInsured, StartDate/EndDate
 - **Claim**: ClaimNumber (`CLM-2026-000001`), `ClaimantId` (→ User.Id), PolicyId, IncidentType, IncidentDate, Location, Description, ClaimedAmount, AssessedAmount, AssessmentSummary, ApprovedAmount, Status, `AssignedStaffId` (→ User.Id), SubmittedAt/AssignedAt/DecidedAt/PaidAt, DecisionReason, PaymentReference, `Version` (concurrency token — เพิ่มใน Phase 2 เป็น shadow property ของ EF)
   - กฎ: `Policy.HolderId == ClaimantId` คือแจ้งเคลมได้เฉพาะกรมธรรม์ของตัวเอง
-- **ClaimDocument**: ไฟล์แนบ (เก็บไฟล์บน disk และเก็บ metadata ใน DB)
 - **InformationRequest**: Message, RequestedBy, DueDate, Status (Open/Responded), ResponseText, RespondedAt
 - **ClaimStatusHistory**: audit trail ของทุก transition ใช้ทำ timeline และคำนวณ performance
-- **Notification**, **OutboxMessage**, **ProcessedMessage** (Phase 7)
+- **Notification** (Phase 7)
 - ไม่มี entity `Payment` แยก เพราะหนึ่งเคลมจ่ายครั้งเดียว จึงเก็บ `PaymentReference` + `PaidAt` ไว้บน Claim
 
 จำนวนเงินเก็บเป็น `long` หน่วยสตางค์ (SQLite ทำ SUM/ORDER BY กับ `decimal` ฝั่ง DB ไม่ได้)
@@ -125,18 +126,21 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - Tests: register (สำเร็จ, แอบส่ง role, email ซ้ำแบบตัวพิมพ์ต่าง, input ผิด), login (seed ทุก role, หลัง register, รหัสผิด/ไม่มี user), `/me` (401 ไม่มี token, token ถูกแก้), policy × role ครบ 9 กรณี
 - *ปรับจากแผนเดิม*: ไม่ทำ `ICurrentUser` แต่ endpoint อ่าน user id จาก `ClaimsPrincipal.GetUserId()` แล้วส่งเป็นพารามิเตอร์ให้ service เหมือนที่ domain รับ actor id อยู่แล้ว ส่วน 403 ผ่าน HTTP จะ test ใน Phase 4/5 เมื่อมี endpoint ที่จำกัด role
 
-### Phase 4 — Claimant: แจ้งเหตุและติดตามสถานะ
-- `GET /api/policies/mine`
-- `POST /api/claims`: validate ความเป็นเจ้าของ policy, ช่วงคุ้มครอง, IncidentType และยอดไม่เกินทุนประกัน
-  - ต้องแก้: "วันนี้" ที่ใช้เช็ควันเกิดเหตุ/DueDate ตอนนี้คิดจาก UTC ควรคิดตาม business timezone `Asia/Bangkok` (เวลาใน DB ยังเป็น UTC)
-- `GET /api/claims/mine` (filter + pagination), `GET /api/claims/{id}` (รายละเอียด + timeline + ผลพิจารณา)
-- `POST /api/claims/{id}/documents`, `GET .../documents/{docId}`, `POST /api/claims/{id}/withdraw`
-- Tests: flow แจ้งเหตุ → ดูรายการ → ดูรายละเอียด และ ownership check
+### Phase 4 — Claimant: แจ้งเหตุและติดตามสถานะ ✅
+- `GET /api/policies/mine`: policy ของฉันพร้อม IncidentType ที่คุ้มครอง (ให้ FE ทำ dropdown)
+- `POST /api/claims` (201): policy ไม่มีได้ 404, ไม่ใช่ของตัวเองได้ 403, กฎอื่นผิดได้ 400
+- `GET /api/claims/mine?status=&page=&pageSize=` (ใหม่สุดก่อน, pageSize สูงสุด 100), `GET /api/claims/{id}` (รายละเอียด + timeline + คำขอข้อมูล + ผลพิจารณา ไม่รวมบันทึกประเมินภายใน)
+- `POST /api/claims/{id}/withdraw` (ได้เฉพาะตอน Submitted ไม่งั้นได้ 409)
+- เคลมของคนอื่นตอบ **404** (ไม่ใช่ 403) เพื่อไม่บอกว่ามีเคลมนี้อยู่
+- `BusinessCalendar`: "วันนี้" สำหรับกฎวันเกิดเหตุ/DueDate และปีของเลขเคลมใช้ปฏิทิน `Asia/Bangkok`
+- Application: `ClaimantClaimService`, `PolicyService` + ports `IClaimRepository`, `IPolicyRepository`, `PagedResult<T>`
+- Tests: unit (กฎ timezone) และ integration (policies, flow แจ้งเหตุ → รายการ → รายละเอียด, 403/400/404 ตอนแจ้ง, ownership 404, filter + paging, withdraw ซ้ำ 409, Staff เรียกได้ 403, ไม่มี token ได้ 401)
+- *ปรับจากแผนเดิม*: ตัดการแนบไฟล์ (`ClaimDocument`, upload/download) ออก เพราะโจทย์ไม่ได้ขอ
 
 ### Phase 5 — Staff: รับเคลมและตรวจสอบ/ประเมิน
 - `GET /api/staff/claims` (queue: unassigned / assignedToMe, filter + pagination)
-- `POST /api/staff/claims/{id}/assign` (ถ้ามีคนรับไปแล้วได้ 409), `GET /api/staff/claims/{id}`
-- ขอข้อมูลเพิ่ม: `POST /api/staff/claims/{id}/information-requests` และ claimant ตอบผ่าน `POST /api/claims/{id}/information-requests/{reqId}/response`
+- `POST /api/staff/claims/{id}/assign` (ถ้ามีคนรับไปแล้วได้ 409 รวมถึงกรณีชนกันพร้อมกัน `DbUpdateConcurrencyException`), `GET /api/staff/claims/{id}`
+- ขอข้อมูลเพิ่ม: `POST /api/staff/claims/{id}/information-requests` และ claimant ตอบเป็นข้อความผ่าน `POST /api/claims/{id}/information-requests/{reqId}/response`
 - `POST /api/staff/claims/{id}/assessment`
 - Tests: flow รับงาน → ขอข้อมูล → claimant ตอบ → ประเมิน
 
@@ -144,21 +148,19 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - `POST /api/staff/claims/{id}/approve`, `.../reject` (ต้องมีเหตุผล), `.../pay` (สร้าง reference แบบ mock)
 - Tests: happy path จนถึง Paid และ rejection path
 
-### Phase 7 — Kafka: Outbox + Event consumers
+### Phase 7 — Kafka: claim events + notification consumer (แบบเรียบง่าย)
 - `docker-compose.yml`: Kafka (KRaft) + kafka-ui
-- Domain events: เพิ่ม `AggregateRoot` (เก็บรายการ event) ให้ `Claim` และ raise `ClaimSubmitted`, `ClaimAssigned`, `InformationRequested`, `InformationProvided`, `ClaimAssessed`, `ClaimApproved`, `ClaimRejected`, `ClaimPaid`, `ClaimWithdrawn` ในแต่ละ transition
-- SaveChanges interceptor เขียน `OutboxMessage`, `OutboxPublisher` publish ไป `claims.events` (key = ClaimId) ด้วย `Confluent.Kafka`
-- `NotificationConsumer` (idempotent ด้วย `ProcessedMessage`), `GET /api/notifications`, `POST /api/notifications/{id}/read`
-- `Kafka:Enabled=false` ใช้ in-process bus (ใช้ใน tests)
-- Tests: outbox, idempotency, อนุมัติแล้ว claimant ได้ notification
+- ทุกครั้งที่เคลมเปลี่ยนสถานะ publish event `ClaimStatusChanged` ไป topic `claims.events` (key = ClaimId เพื่อรักษาลำดับต่อเคลม) ด้วย `Confluent.Kafka`
+- Consumer 1 ตัวสร้าง `Notification` ให้ claimant และ `GET /api/notifications`
+- ไม่ทำ transactional outbox แต่จะอธิบาย trade-off ใน README (publish หลัง save สำเร็จ ถ้า Kafka ล่มตอนนั้น event จะหาย)
+- Tests ไม่ต้องใช้ Kafka จริง (ใช้ fake publisher)
 
 ### Phase 8 — Reporting
 - `GET /api/reports/me` (Staff), `GET /api/reports/team/workload` และ `GET /api/reports/team/performance?from=&to=` (Supervisor)
 - Tests: ตัวเลขจาก seed scenario ถูกต้อง
 
-### Phase 9 — Hardening และเอกสาร
-- Request validation, logging, ตรวจ error response ให้รูปแบบเดียวกัน
-- `.http` file ครบทุก endpoint, README (วิธีรัน, seed accounts, event catalog)
+### Phase 9 — เอกสาร
+- README (วิธีรัน, seed accounts, state machine, API overview, event, trade-off ที่เลือก) และ `.http` ครบทุก endpoint
 
 ## Verification (end-to-end)
 1. `cd backend && dotnet build -warnaserror && dotnet test`

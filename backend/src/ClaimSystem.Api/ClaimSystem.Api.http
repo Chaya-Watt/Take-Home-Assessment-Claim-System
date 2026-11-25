@@ -36,3 +36,41 @@ Content-Type: application/json
 ### Who am I
 GET {{host}}/api/auth/me
 Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------- Claimant (log in as claimant1 above)
+
+### My policies (copy a policy id into @policyId)
+GET {{host}}/api/policies/mine
+Authorization: Bearer {{token}}
+
+###
+@policyId = paste-policy-id-here
+
+### Report an incident (amount in satang: 45,000.00 THB)
+POST {{host}}/api/claims
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "policyId": "{{policyId}}",
+  "incidentType": "Collision",
+  "incidentDate": "2026-11-25",
+  "location": "Sukhumvit Rd, Bangkok",
+  "description": "Rear-ended at a red light",
+  "claimedAmount": 4500000
+}
+
+### My claims (optional: ?status=Submitted&page=1&pageSize=20)
+GET {{host}}/api/claims/mine
+Authorization: Bearer {{token}}
+
+###
+@claimId = paste-claim-id-here
+
+### Claim detail with timeline
+GET {{host}}/api/claims/{{claimId}}
+Authorization: Bearer {{token}}
+
+### Withdraw (only while Submitted)
+POST {{host}}/api/claims/{{claimId}}/withdraw
+Authorization: Bearer {{token}}
