@@ -3,8 +3,6 @@ import { Routes } from '@angular/router';
 import { AuthStore } from './core/auth/auth-store';
 import { authGuard, roleGuard } from './core/auth/guards';
 
-const comingSoon = () => import('./layout/coming-soon').then((m) => m.ComingSoon);
-
 /**
  * Access per route mirrors the backend policies:
  * /claims → Claimant, /staff → Staff or Supervisor, /supervisor → Supervisor.
@@ -26,13 +24,11 @@ export const routes: Routes = [
     loadChildren: () => import('./staff/staff.routes').then((m) => m.staffRoutes),
   },
 
-  // Placeholder until phase F4 builds this screen.
   {
     path: 'supervisor',
     canActivate: [authGuard, roleGuard('Supervisor')],
     title: 'Team dashboard',
-    loadComponent: comingSoon,
-    data: { heading: 'Team dashboard', phase: 'F4' },
+    loadComponent: () => import('./supervisor/dashboard').then((m) => m.Dashboard),
   },
 
   { path: '**', redirectTo: '' },

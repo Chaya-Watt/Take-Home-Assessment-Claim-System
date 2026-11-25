@@ -7,8 +7,8 @@
 | F1 | Auth + layout + ของที่ใช้ร่วมกัน | ✅ เสร็จ |
 | F2 | Claimant | ✅ เสร็จ |
 | F3 | Staff (Supervisor ใช้ร่วม) | ✅ เสร็จ |
-| F4 | Supervisor dashboard | ⏳ ถัดไป |
-| F5 | ตรวจรอบสุดท้าย + เอกสาร | — |
+| F4 | Supervisor dashboard | ✅ เสร็จ |
+| F5 | ตรวจรอบสุดท้าย + เอกสาร | ⏳ ถัดไป |
 
 ## เป้าหมาย
 หน้าเว็บที่ **ใช้งาน API ได้จริงครบทุก role** ไม่เน้นความสวย
@@ -194,7 +194,20 @@ Supervisor เข้าคิวงาน รับงาน ขอข้อม�
 - **การเลือก action** อยู่ใน `computed()` ที่ test ได้แยกจาก template
 - **Tests:** StaffApi service, ฟังก์ชันเลือก action ตามสถานะ/คนรับงาน, `roleGuard` ให้ Supervisor เข้า `/staff/**` ได้
 
-### F4 — Supervisor dashboard
+### F4 — Supervisor dashboard ✅
+**สรุปสิ่งที่ทำ** (`supervisor/dashboard.ts`, route `/supervisor` เฉพาะ Supervisor)
+- **Claims by status:** ตารางจำนวนเคลมทั้ง 8 สถานะ
+- **Waiting to be picked up (N):** เคลมที่รอนานสุด พร้อม "รอมาแล้วกี่วัน/ชั่วโมง"
+- **Open claims stuck longest:** สถานะ, คนถืองาน (ชื่อ) และค้างในสถานะนี้มานานเท่าไร
+- **Team workload:** `<details>` ต่อคน (เปิดไว้เมื่อมีงาน) แสดงจำนวนงานแยกตามสถานะ + รายการเคลม
+- **การใช้งาน:**
+  - เลขเคลมทุกจุดลิงก์ไป `/staff/claims/:id` ให้ supervisor ทำ action ต่อได้
+  - ปุ่ม Refresh และเวลา "Updated …"
+  - ระยะเวลาคำนวณจาก `generatedAt` ของ server (`core/ui/duration.ts`) ไม่ใช้นาฬิกาเครื่อง
+- ลบ `ComingSoon` (ไม่มีหน้าไหนใช้แล้ว)
+- **Tests (รวม 98):** `timeSince`, Dashboard (จำนวนตามสถานะ, unassigned + ลิงก์, คนถืองาน, workload ต่อคน, Refresh โหลดใหม่)
+
+**แผนเดิม**
 - **`/supervisor`:**
   - การ์ดจำนวนเคลมตามสถานะ
   - ตาราง "ยังไม่มีคนรับ (รอนานสุด)"
