@@ -11,7 +11,7 @@
 | 5 | Staff: รับเคลมและประเมิน | ✅ เสร็จ |
 | 6 | ตัดสินผลและจ่ายค่าสินไหม | ✅ เสร็จ |
 | 7 | Supervisor dashboard | ✅ เสร็จ |
-| 8 | เอกสาร (README) | ⏳ ถัดไป |
+| 8 | เอกสาร (README) | ✅ เสร็จ |
 | — | Kafka notification | ถ้ามีเวลา (ดูท้ายเอกสาร) |
 
 ## ข้อตกลงหลัก
@@ -166,8 +166,9 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - ดูรายละเอียดเคลมต่อได้ด้วย `GET /api/staff/claims/{id}` ที่มีอยู่แล้ว
 - Tests: unit (`IsFinal` ตรงกับ state machine) และ integration (ตัวเลขเปลี่ยนตาม submit → assign → reject, ลำดับ list, มีเฉพาะเคลมที่ยังไม่จบ, Staff/Claimant ได้ 403)
 
-### Phase 8 — เอกสาร
-- README (วิธีรัน, seed accounts, state machine, API overview, trade-off ที่เลือก, สิ่งที่จะทำถ้ามีเวลา) และ `.http` ครบทุก endpoint
+### Phase 8 — เอกสาร ✅
+- `README.md` (ภาษาอังกฤษสำหรับผู้ตรวจ): วิธีรัน, demo accounts, flow ทดลอง, state machine + กฎ, API overview, error codes, architecture, design decisions, สิ่งที่ไม่ทำ และ "ถ้ามีเวลา: Kafka"
+- `ClaimSystem.Api.http` มี request ครบทุก endpoint (ทำมาตั้งแต่ Phase 3–7)
 
 ## ถ้ามีเวลา: แจ้งผลให้ลูกค้าผ่าน Kafka
 ตอนนี้ claimant ต้องเปิดดูสถานะเอง (`GET /api/claims/{id}`) ถ้ามีเวลาจะทำการแจ้งเตือนแบบ async:
