@@ -11,7 +11,11 @@ Insurance claim system (take-home assessment). Two user groups: **Claimants** (r
 dotnet build -warnaserror   # must be clean
 dotnet test                 # Microsoft.Testing.Platform runner (set in global.json)
 dotnet run --project src/ClaimSystem.Api   # http://localhost:5106 — /health, /scalar, /openapi/v1.json
+
+# after changing an entity/configuration (dotnet-ef is installed globally)
+dotnet ef migrations add <Name> --project src/ClaimSystem.Infrastructure --startup-project src/ClaimSystem.Api --output-dir Persistence/Migrations
 ```
+In Development the app applies migrations and seeds demo data on startup. The DB is `src/ClaimSystem.Api/claims.db` (gitignored; delete it to reset); integration tests use the same file.
 
 ## Backend structure (Clean Architecture, dependencies point inward)
 ```
@@ -20,7 +24,7 @@ src/ClaimSystem.Application     use cases by feature + ports (interfaces); DI ab
 src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka, file storage — implements Application ports
 src/ClaimSystem.Api             composition root + Minimal API endpoints
 tests/ClaimSystem.UnitTests          domain rules (ClaimFixtures builds claims in any status)
-tests/ClaimSystem.IntegrationTests   WebApplicationFactory<Program>
+tests/ClaimSystem.IntegrationTests   WebApplicationFactory<Program>, shared via [Collection(ApiCollection.Name)]
 ```
 Domain methods take `now` (UTC) as a parameter instead of reading the clock, and throw `DomainException` with a `Code` from `DomainErrors`.
 Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `DependencyInjection.cs`.
@@ -29,6 +33,7 @@ Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `Depe
 - **Minimal APIs** (not controllers): one file per feature, grouped with `MapGroup` + `RequireAuthorization`.
 - Errors are ProblemDetails (`AddProblemDetails` + `UseExceptionHandler`).
 - Money stored as `long` in satang (SQLite can't SUM/ORDER BY `decimal` server-side).
+- EF: one `IEntityTypeConfiguration` per entity; enums stored as text; Ids are `ValueGeneratedNever` (created in the domain). `Claim` has a `Version` shadow property as its concurrency token.
 - Package versions live in each `.csproj`; `TreatWarningsAsErrors` is on via `Directory.Build.props`.
 - Tests: xUnit v3, names like `Method_Scenario_Expected`; use `TestContext.Current.CancellationToken`.
 

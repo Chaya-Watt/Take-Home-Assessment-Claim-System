@@ -5,8 +5,8 @@
 |---|---|---|
 | 0 | Scaffolding | ✅ เสร็จ |
 | 1 | Domain model + state machine | ✅ เสร็จ |
-| 2 | Persistence (EF Core + SQLite) | ⏳ ถัดไป |
-| 3 | Authentication / Authorization | — |
+| 2 | Persistence (EF Core + SQLite) | ✅ เสร็จ |
+| 3 | Authentication / Authorization | ⏳ ถัดไป |
 | 4 | Claimant: แจ้งเหตุและติดตามสถานะ | — |
 | 5 | Staff: รับเคลมและประเมิน | — |
 | 6 | ตัดสินผลและจ่ายค่าสินไหม | — |
@@ -100,11 +100,17 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - Tests (`tests/ClaimSystem.UnitTests`): กฎตอนแจ้งเหตุ, flow ที่ถูกต้องทุกเส้น, matrix ของทุก action × ทุกสถานะที่ไม่อนุญาต, สิทธิ์, จำนวนเงิน และ mapping
 - *ปรับจากแผนเดิม*: เลื่อน domain events (`AggregateRoot`/`IDomainEvent`) ไปทำใน Phase 7 พร้อม Kafka และตัด entity `Payment` ออก
 
-### Phase 2 — Persistence (EF Core + SQLite)
-- `ClaimDbContext`, entity configurations, concurrency token `Version`
-- Migration แรก + auto-migrate ตอน dev, seed: claimant 2 คน (มี policy), staff 2 คน, supervisor 1 คน
-- ตัวสร้าง ClaimNumber
-- Tests: migration, seed, concurrency conflict, ClaimNumber ไม่ซ้ำ
+### Phase 2 — Persistence (EF Core + SQLite) ✅
+- `ClaimDbContext` + `IEntityTypeConfiguration` แยกไฟล์ต่อ entity (`Infrastructure/Persistence/Configurations`)
+  - enum เก็บเป็นข้อความ, DateTime อ่านกลับเป็น UTC, Id ทุกตัวเป็น `ValueGeneratedNever` (สร้างใน domain)
+  - `Version` เป็น shadow property ของ Claim: `SaveChanges` สุ่มค่าใหม่ทุกครั้ง ถ้าคนอื่น save ก่อนจะได้ `DbUpdateConcurrencyException`
+- Migration `InitialCreate` (`Persistence/Migrations`) และตอน Development แอป migrate + seed เอง (`DatabaseInitializer`)
+  - Seed: `claimant1` (Motor + Property), `claimant2` (Health), `staff1`, `staff2`, `supervisor` (`@example.com`) ยังไม่มีรหัสผ่าน (เพิ่มใน Phase 3)
+- `IClaimNumberGenerator` → `CLM-{ปี}-{000001}` ใช้ตาราง `ClaimNumberCounters` (1 แถวต่อปี) เพิ่มค่าด้วย SQL statement เดียว จึงไม่ได้เลขซ้ำแม้เรียกพร้อมกัน
+- DB อยู่ที่ `src/ClaimSystem.Api/claims.db` (path แบบ relative อ้างจากโฟลเดอร์ Api) และ integration tests ใช้ไฟล์เดียวกันนี้ (ไม่มี test DB แยก)
+  - test ทุก class ใช้แอป instance เดียวกัน (`ApiCollection`) และแต่ละ test สร้างเคลมใหม่ของตัวเอง จึงรันซ้ำได้
+  - ลบ `claims.db*` ได้ทุกเมื่อ แอปจะสร้างใหม่ตอนรันครั้งถัดไป
+- Tests (`IntegrationTests/Persistence`): migration ครบ + model ตรงกับ migration, seed และ seed ซ้ำ, save/load aggregate พร้อม children, concurrency conflict, ClaimNumber ไม่ซ้ำ/แยกตามปี
 
 ### Phase 3 — Authentication และ Authorization
 - `POST /api/auth/register` (Claimant เท่านั้น), `POST /api/auth/login`, `GET /api/auth/me`

@@ -5,6 +5,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
     <PackageReference Include="Scalar.AspNetCore" Version="3.2.0" />
+    <!-- Needed by `dotnet ef migrations` (design time only, not shipped). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>

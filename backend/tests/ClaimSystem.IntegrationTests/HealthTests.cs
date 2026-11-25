@@ -3,7 +3,8 @@ using Microsoft.AspNetCore.Mvc.Testing;
 
 namespace ClaimSystem.IntegrationTests;
 
-public class HealthTests(WebApplicationFactory<Program> factory) : IClassFixture<WebApplicationFactory<Program>>
+[Collection(ApiCollection.Name)]
+public class HealthTests(WebApplicationFactory<Program> factory)
 {
     private readonly HttpClient _client = factory.CreateClient();
 

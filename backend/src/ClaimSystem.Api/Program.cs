@@ -1,5 +1,6 @@
 using ClaimSystem.Application;
 using ClaimSystem.Infrastructure;
+using ClaimSystem.Infrastructure.Persistence;
 using Scalar.AspNetCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -18,6 +19,11 @@ builder.Services.AddCors(options => options.AddDefaultPolicy(policy => policy
     .AllowAnyMethod()));
 
 var app = builder.Build();
+
+if (app.Environment.IsDevelopment())
+{
+    await app.Services.InitializeDatabaseAsync(); // apply migrations + seed demo data
+}
 
 app.UseExceptionHandler();
 app.UseStatusCodePages();
