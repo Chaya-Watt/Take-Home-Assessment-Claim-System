@@ -1,0 +1,18 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Infrastructure: EF Core (SQLite), JWT, Kafka, outbox, file storage. Implements Application ports. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaimSystem.Application\ClaimSystem.Application.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="10.0.15" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.15" />
+  </ItemGroup>
+
+</Project>

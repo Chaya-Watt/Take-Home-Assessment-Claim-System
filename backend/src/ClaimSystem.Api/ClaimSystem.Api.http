@@ -1,0 +1,158 @@
+@host = http://localhost:5106
+
+### Health check
+GET {{host}}/health
+
+### OpenAPI document (Development only) — interactive UI at {{host}}/scalar
+GET {{host}}/openapi/v1.json
+Accept: application/json
+
+### ---------------------------------------------------------------- Auth
+# Seeded accounts (password Password123!):
+#   claimant1@example.com, claimant2@example.com, staff1@example.com, staff2@example.com, supervisor@example.com
+
+### Register a new claimant
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "new.claimant@example.com",
+  "password": "Password123!",
+  "fullName": "New Claimant"
+}
+
+### Log in (copy accessToken into @token below)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "claimant1@example.com",
+  "password": "Password123!"
+}
+
+###
+@token = paste-access-token-here
+
+### Who am I
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------- Claimant (log in as claimant1 above)
+
+### My policies (copy a policy id into @policyId)
+GET {{host}}/api/policies/mine
+Authorization: Bearer {{token}}
+
+###
+@policyId = paste-policy-id-here
+
+### Report an incident (amount in satang: 45,000.00 THB)
+POST {{host}}/api/claims
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "policyId": "{{policyId}}",
+  "incidentType": "Collision",
+  "incidentDate": "2026-11-25",
+  "location": "Sukhumvit Rd, Bangkok",
+  "description": "Rear-ended at a red light",
+  "claimedAmount": 4500000
+}
+
+### My claims (optional: ?status=Submitted&page=1&pageSize=20)
+GET {{host}}/api/claims/mine
+Authorization: Bearer {{token}}
+
+###
+@claimId = paste-claim-id-here
+
+### Claim detail with timeline
+GET {{host}}/api/claims/{{claimId}}
+Authorization: Bearer {{token}}
+
+### Withdraw (only while Submitted)
+POST {{host}}/api/claims/{{claimId}}/withdraw
+Authorization: Bearer {{token}}
+
+###
+@requestId = paste-information-request-id-here
+
+### Answer a staff information request (claim goes back to UnderReview)
+POST {{host}}/api/claims/{{claimId}}/information-requests/{{requestId}}/response
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "response": "Police report no. 1234/2569"
+}
+
+### ---------------------------------------------------------------- Staff (log in as staff1 and paste into @staffToken)
+@staffToken = paste-staff-access-token-here
+
+### Work queue: queue=Unassigned | Mine (omit for all), optional status, page, pageSize
+GET {{host}}/api/staff/claims?queue=Unassigned
+Authorization: Bearer {{staffToken}}
+
+### Full claim detail (incl. claimant, policy, assessment)
+GET {{host}}/api/staff/claims/{{claimId}}
+Authorization: Bearer {{staffToken}}
+
+### Pick up the claim (409 if someone already has it)
+POST {{host}}/api/staff/claims/{{claimId}}/assign
+Authorization: Bearer {{staffToken}}
+
+### Ask the claimant for more information
+POST {{host}}/api/staff/claims/{{claimId}}/information-requests
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "message": "Please send the police report number",
+  "dueDate": "2026-12-02"
+}
+
+### Assess (amount in satang, must not exceed the claimed amount)
+POST {{host}}/api/staff/claims/{{claimId}}/assessment
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "assessedAmount": 3500000,
+  "summary": "Repair quote checked; bumper and tail light"
+}
+
+### Approve (amount ≤ assessed amount; note optional)
+POST {{host}}/api/staff/claims/{{claimId}}/approve
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "approvedAmount": 3000000,
+  "note": "Deductible 5,000 THB applied"
+}
+
+### Reject (from UnderReview or Assessed; reason required)
+POST {{host}}/api/staff/claims/{{claimId}}/reject
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "reason": "Damage happened before the policy started"
+}
+
+### Record payment (after approval; transfer made outside the system)
+POST {{host}}/api/staff/claims/{{claimId}}/pay
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "paymentReference": "TRF-20261125-0001"
+}
+
+### ---------------------------------------------------------------- Supervisor (log in as supervisor@example.com)
+@supervisorToken = paste-supervisor-access-token-here
+
+### Team dashboard: claims per status, unassigned, longest waiting, who is working on what
+GET {{host}}/api/supervisor/dashboard
+Authorization: Bearer {{supervisorToken}}

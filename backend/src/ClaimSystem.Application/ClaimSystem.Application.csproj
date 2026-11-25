@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Application: use cases organised by feature, DTOs and ports (interfaces) implemented by Infrastructure. -->
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaimSystem.Domain\ClaimSystem.Domain.csproj" />
+  </ItemGroup>
+
+  <!-- Only DI abstractions: Application must not depend on ASP.NET Core or infrastructure frameworks. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="10.0.15" />
+  </ItemGroup>
+
+</Project>

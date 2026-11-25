@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <!-- Api: composition root + Minimal API endpoint groups. -->
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" Version="10.0.15" />
+    <PackageReference Include="Scalar.AspNetCore" Version="3.2.0" />
+    <!-- Needed by `dotnet ef migrations` (design time only, not shipped). -->
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.15" PrivateAssets="all" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ClaimSystem.Application\ClaimSystem.Application.csproj" />
+    <ProjectReference Include="..\ClaimSystem.Infrastructure\ClaimSystem.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>
