@@ -1,3 +1,4 @@
+using ClaimSystem.Application.Auth;
 using ClaimSystem.Domain.Policies;
 using ClaimSystem.Domain.Users;
 using Microsoft.EntityFrameworkCore;
@@ -7,11 +8,15 @@ namespace ClaimSystem.Infrastructure.Persistence;
 
 public static class DatabaseInitializer
 {
+    /// <summary>Password of every seeded demo account (development only).</summary>
+    public const string DemoPassword = "Password123!";
+
     /// <summary>Applies pending migrations, then seeds demo users and policies if the database is empty.</summary>
     public static async Task InitializeDatabaseAsync(this IServiceProvider services, CancellationToken cancellationToken = default)
     {
         await using var scope = services.CreateAsyncScope();
         var db = scope.ServiceProvider.GetRequiredService<ClaimDbContext>();
+        var passwordHasher = scope.ServiceProvider.GetRequiredService<IPasswordHasher>();
         var now = scope.ServiceProvider.GetRequiredService<TimeProvider>().GetUtcNow().UtcDateTime;
 
         await db.Database.MigrateAsync(cancellationToken);
@@ -21,15 +26,22 @@ public static class DatabaseInitializer
             return;
         }
 
-        // Passwords are added in Phase 3 (auth).
         var claimant1 = User.Create("claimant1@example.com", "Somchai Jaidee", UserRole.Claimant);
         var claimant2 = User.Create("claimant2@example.com", "Suda Rakdee", UserRole.Claimant);
-        db.Users.AddRange(
+        User[] users =
+        [
             claimant1,
             claimant2,
             User.Create("staff1@example.com", "Anan Wongsa", UserRole.Staff),
             User.Create("staff2@example.com", "Pim Srisuk", UserRole.Staff),
-            User.Create("supervisor@example.com", "Wichai Thongdee", UserRole.Supervisor));
+            User.Create("supervisor@example.com", "Wichai Thongdee", UserRole.Supervisor),
+        ];
+        foreach (var user in users)
+        {
+            user.SetPasswordHash(passwordHasher.Hash(user, DemoPassword));
+        }
+
+        db.Users.AddRange(users);
 
         // Policies run from 1 Jan this year to 31 Dec next year, so demo incidents "today" are always covered.
         var start = new DateOnly(now.Year, 1, 1);

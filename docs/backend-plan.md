@@ -6,8 +6,8 @@
 | 0 | Scaffolding | ✅ เสร็จ |
 | 1 | Domain model + state machine | ✅ เสร็จ |
 | 2 | Persistence (EF Core + SQLite) | ✅ เสร็จ |
-| 3 | Authentication / Authorization | ⏳ ถัดไป |
-| 4 | Claimant: แจ้งเหตุและติดตามสถานะ | — |
+| 3 | Authentication / Authorization | ✅ เสร็จ |
+| 4 | Claimant: แจ้งเหตุและติดตามสถานะ | ⏳ ถัดไป |
 | 5 | Staff: รับเคลมและประเมิน | — |
 | 6 | ตัดสินผลและจ่ายค่าสินไหม | — |
 | 7 | Kafka: Outbox + consumers | — |
@@ -70,12 +70,15 @@ Submitted ──claimant withdraw──▶ Withdrawn
 Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs](../backend/src/ClaimSystem.Domain/Claims/Claim.cs)) แต่ละเมธอดเช็คตามลำดับ **สถานะ → สิทธิ์ (เจ้าของ / staff ที่รับงาน) → ข้อมูล** แล้วบันทึก `ClaimStatusHistory`
 ถ้าผิดกฎจะ throw `DomainException` พร้อม `Code`:
 
-| Code | ความหมาย | HTTP (map ใน phase หลัง) |
+| Code | ความหมาย | HTTP |
 |---|---|---|
 | `claim.invalid_transition` | ทำ action นี้ในสถานะปัจจุบันไม่ได้ | 409 |
 | `validation` | ข้อมูลผิดกฎ (จำนวนเงิน, วันที่, ประเภทเหตุ, ข้อความว่าง) | 400 |
 | `not_allowed` | ไม่ใช่เจ้าของเคลม / ไม่ใช่ staff ที่รับงาน | 403 |
 | `not_found` | ไม่พบ information request ที่อ้างถึง | 404 |
+| `conflict` | ข้อมูลซ้ำ (เช่น email ที่สมัครไว้แล้ว) | 409 |
+
+`DomainExceptionHandler` (Api) แปลง code เป็น ProblemDetails พร้อม field `code` เพื่อให้ frontend แยกกรณีได้
 
 ---
 
@@ -112,14 +115,20 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
   - ลบ `claims.db*` ได้ทุกเมื่อ แอปจะสร้างใหม่ตอนรันครั้งถัดไป
 - Tests (`IntegrationTests/Persistence`): migration ครบ + model ตรงกับ migration, seed และ seed ซ้ำ, save/load aggregate พร้อม children, concurrency conflict, ClaimNumber ไม่ซ้ำ/แยกตามปี
 
-### Phase 3 — Authentication และ Authorization
-- `POST /api/auth/register` (Claimant เท่านั้น), `POST /api/auth/login`, `GET /api/auth/me`
-- `PasswordHasher<User>`, JWT (`JwtBearer`), policies `ClaimantOnly` / `StaffOrSupervisor` / `SupervisorOnly`, `ICurrentUser`
-- Tests: register/login สำเร็จและล้มเหลว, 401, 403
+### Phase 3 — Authentication และ Authorization ✅
+- `POST /api/auth/register` (สร้าง Claimant เสมอ ส่ง `role` มาก็ไม่มีผล), `POST /api/auth/login`, `GET /api/auth/me`
+- Application: `AuthService` + ports `IPasswordHasher`, `IAccessTokenIssuer`, `IUserRepository`, `IUnitOfWork` (Application ไม่อ้าง EF ตรงๆ)
+- Infrastructure: `PasswordHasher<User>` ของ Identity (PBKDF2), JWT HS256 ผ่าน `JsonWebTokenHandler` + `AddJwtBearer`, claims `sub` / `role` / `name` / `email`
+  - Config `Jwt` (Issuer, Audience, ExpiryMinutes ใน `appsettings.json` และ `SigningKey` ใน `appsettings.Development.json`) ตรวจตอน start ว่า key ยาวพอ (≥ 32 bytes) โดย production ต้องตั้ง `Jwt__SigningKey` ผ่าน env
+- Api: `AuthorizationPolicies` (`ClaimantOnly`, `StaffOrSupervisor`, `SupervisorOnly`), `DomainExceptionHandler`, JSON enum เป็นข้อความ
+- Seed accounts ใช้รหัสผ่าน `Password123!`
+- Tests: register (สำเร็จ, แอบส่ง role, email ซ้ำแบบตัวพิมพ์ต่าง, input ผิด), login (seed ทุก role, หลัง register, รหัสผิด/ไม่มี user), `/me` (401 ไม่มี token, token ถูกแก้), policy × role ครบ 9 กรณี
+- *ปรับจากแผนเดิม*: ไม่ทำ `ICurrentUser` แต่ endpoint อ่าน user id จาก `ClaimsPrincipal.GetUserId()` แล้วส่งเป็นพารามิเตอร์ให้ service เหมือนที่ domain รับ actor id อยู่แล้ว ส่วน 403 ผ่าน HTTP จะ test ใน Phase 4/5 เมื่อมี endpoint ที่จำกัด role
 
 ### Phase 4 — Claimant: แจ้งเหตุและติดตามสถานะ
 - `GET /api/policies/mine`
 - `POST /api/claims`: validate ความเป็นเจ้าของ policy, ช่วงคุ้มครอง, IncidentType และยอดไม่เกินทุนประกัน
+  - ต้องแก้: "วันนี้" ที่ใช้เช็ควันเกิดเหตุ/DueDate ตอนนี้คิดจาก UTC ควรคิดตาม business timezone `Asia/Bangkok` (เวลาใน DB ยังเป็น UTC)
 - `GET /api/claims/mine` (filter + pagination), `GET /api/claims/{id}` (รายละเอียด + timeline + ผลพิจารณา)
 - `POST /api/claims/{id}/documents`, `GET .../documents/{docId}`, `POST /api/claims/{id}/withdraw`
 - Tests: flow แจ้งเหตุ → ดูรายการ → ดูรายละเอียด และ ownership check

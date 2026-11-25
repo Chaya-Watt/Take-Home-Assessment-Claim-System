@@ -16,6 +16,7 @@ dotnet run --project src/ClaimSystem.Api   # http://localhost:5106 — /health, 
 dotnet ef migrations add <Name> --project src/ClaimSystem.Infrastructure --startup-project src/ClaimSystem.Api --output-dir Persistence/Migrations
 ```
 In Development the app applies migrations and seeds demo data on startup. The DB is `src/ClaimSystem.Api/claims.db` (gitignored; delete it to reset); integration tests use the same file.
+Seeded accounts (password `Password123!`): `claimant1@`, `claimant2@`, `staff1@`, `staff2@`, `supervisor@example.com`. Requests to try are in `src/ClaimSystem.Api/ClaimSystem.Api.http`.
 
 ## Backend structure (Clean Architecture, dependencies point inward)
 ```
@@ -31,7 +32,9 @@ Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `Depe
 
 ## Conventions
 - **Minimal APIs** (not controllers): one file per feature, grouped with `MapGroup` + `RequireAuthorization`.
-- Errors are ProblemDetails (`AddProblemDetails` + `UseExceptionHandler`).
+- Errors are ProblemDetails (`AddProblemDetails` + `UseExceptionHandler`); `DomainExceptionHandler` maps `DomainErrors` codes to 400/403/404/409.
+- Use cases are services in `Application/<Feature>` that talk to the DB only through ports (`I...Repository`, `IUnitOfWork`). Endpoints pass the caller's id (`User.GetUserId()`) into them.
+- Auth: JWT with claims `sub`/`role` (`AuthClaims`); endpoint groups use `AuthorizationPolicies.ClaimantOnly` / `StaffOrSupervisor` / `SupervisorOnly`.
 - Money stored as `long` in satang (SQLite can't SUM/ORDER BY `decimal` server-side).
 - EF: one `IEntityTypeConfiguration` per entity; enums stored as text; Ids are `ValueGeneratedNever` (created in the domain). `Claim` has a `Version` shadow property as its concurrency token.
 - Package versions live in each `.csproj`; `TreatWarningsAsErrors` is on via `Directory.Build.props`.

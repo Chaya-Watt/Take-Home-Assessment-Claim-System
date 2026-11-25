@@ -1,3 +1,4 @@
+using ClaimSystem.Application.Common;
 using ClaimSystem.Domain.Claims;
 using ClaimSystem.Domain.Policies;
 using ClaimSystem.Domain.Users;
@@ -6,7 +7,8 @@ using Microsoft.EntityFrameworkCore;
 
 namespace ClaimSystem.Infrastructure.Persistence;
 
-public sealed class ClaimDbContext(DbContextOptions<ClaimDbContext> options) : DbContext(options)
+/// <summary>Also the Application's <see cref="IUnitOfWork"/>: DbContext.SaveChangesAsync already matches it.</summary>
+public sealed class ClaimDbContext(DbContextOptions<ClaimDbContext> options) : DbContext(options), IUnitOfWork
 {
     public DbSet<User> Users => Set<User>();
     public DbSet<Policy> Policies => Set<Policy>();

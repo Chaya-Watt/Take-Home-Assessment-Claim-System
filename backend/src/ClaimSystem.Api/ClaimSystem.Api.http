@@ -6,3 +6,33 @@ GET {{host}}/health
 ### OpenAPI document (Development only) — interactive UI at {{host}}/scalar
 GET {{host}}/openapi/v1.json
 Accept: application/json
+
+### ---------------------------------------------------------------- Auth
+# Seeded accounts (password Password123!):
+#   claimant1@example.com, claimant2@example.com, staff1@example.com, staff2@example.com, supervisor@example.com
+
+### Register a new claimant
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+  "email": "new.claimant@example.com",
+  "password": "Password123!",
+  "fullName": "New Claimant"
+}
+
+### Log in (copy accessToken into @token below)
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+  "email": "claimant1@example.com",
+  "password": "Password123!"
+}
+
+###
+@token = paste-access-token-here
+
+### Who am I
+GET {{host}}/api/auth/me
+Authorization: Bearer {{token}}

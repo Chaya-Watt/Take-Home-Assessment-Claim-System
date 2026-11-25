@@ -22,4 +22,7 @@ public static class DomainErrors
 
     /// <summary>A referenced child item (e.g. information request) does not exist.</summary>
     public const string NotFound = "not_found";
+
+    /// <summary>Would create a duplicate (e.g. an email that is already registered).</summary>
+    public const string Conflict = "conflict";
 }

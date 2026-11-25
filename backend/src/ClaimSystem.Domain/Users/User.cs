@@ -27,11 +27,14 @@ public sealed class User
         return new User
         {
             Id = Guid.CreateVersion7(),
-            Email = email.Trim().ToLowerInvariant(),
+            Email = NormalizeEmail(email),
             FullName = fullName.Trim(),
             Role = role,
         };
     }
+
+    /// <summary>Emails are compared case-insensitively, so they are stored trimmed and lower-cased.</summary>
+    public static string NormalizeEmail(string email) => email.Trim().ToLowerInvariant();
 
     public void SetPasswordHash(string passwordHash)
     {
