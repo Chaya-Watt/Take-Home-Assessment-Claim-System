@@ -1,4 +1,4 @@
-import { ClaimDetail, PolicyResponse } from '../app/core/api/models';
+import { ClaimDetail, PolicyResponse, StaffClaimDetail } from '../app/core/api/models';
 
 /** Test-only builders shaped like API responses (excluded from the app build). */
 
@@ -35,6 +35,35 @@ export function fakeClaim(overrides: Partial<ClaimDetail> = {}): ClaimDetail {
     claimedAmount: 45_000_00,
     status: 'Submitted',
     submittedAt: '2026-11-20T03:00:00Z',
+    approvedAmount: null,
+    decisionReason: null,
+    decidedAt: null,
+    paymentReference: null,
+    paidAt: null,
+    timeline: [{ fromStatus: null, toStatus: 'Submitted', changedAt: '2026-11-20T03:00:00Z', note: null }],
+    informationRequests: [],
+    ...overrides,
+  };
+}
+
+/** The staff view of a claim (`GET /api/staff/claims/{id}`). */
+export function fakeStaffClaim(overrides: Partial<StaffClaimDetail> = {}): StaffClaimDetail {
+  return {
+    id: 'claim-1',
+    claimNumber: 'CLM-2026-000001',
+    status: 'Submitted',
+    claimant: { id: 'claimant-1', fullName: 'Somchai Jaidee', email: 'claimant1@example.com' },
+    policy: { id: motorPolicy.id, policyNumber: motorPolicy.policyNumber, productType: 'Motor', sumInsured: 500_000_00 },
+    incidentType: 'Collision',
+    incidentDate: '2026-11-20',
+    location: 'Bangkok',
+    description: 'Rear-ended at a red light',
+    claimedAmount: 40_000_00,
+    submittedAt: '2026-11-20T03:00:00Z',
+    assignedStaffId: null,
+    assignedAt: null,
+    assessedAmount: null,
+    assessmentSummary: null,
     approvedAmount: null,
     decisionReason: null,
     decidedAt: null,

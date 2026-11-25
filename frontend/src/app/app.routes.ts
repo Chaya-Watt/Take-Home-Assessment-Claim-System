@@ -20,14 +20,13 @@ export const routes: Routes = [
     loadChildren: () => import('./claimant/claimant.routes').then((m) => m.claimantRoutes),
   },
 
-  // Placeholders until phases F3–F4 build these screens.
   {
     path: 'staff/claims',
     canActivate: [authGuard, roleGuard('Staff', 'Supervisor')],
-    title: 'Work queue',
-    loadComponent: comingSoon,
-    data: { heading: 'Work queue', phase: 'F3' },
+    loadChildren: () => import('./staff/staff.routes').then((m) => m.staffRoutes),
   },
+
+  // Placeholder until phase F4 builds this screen.
   {
     path: 'supervisor',
     canActivate: [authGuard, roleGuard('Supervisor')],

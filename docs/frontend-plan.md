@@ -6,8 +6,8 @@
 | F0 | Scaffold + types จาก OpenAPI | ✅ เสร็จ |
 | F1 | Auth + layout + ของที่ใช้ร่วมกัน | ✅ เสร็จ |
 | F2 | Claimant | ✅ เสร็จ |
-| F3 | Staff (Supervisor ใช้ร่วม) | ⏳ ถัดไป |
-| F4 | Supervisor dashboard | — |
+| F3 | Staff (Supervisor ใช้ร่วม) | ✅ เสร็จ |
+| F4 | Supervisor dashboard | ⏳ ถัดไป |
 | F5 | ตรวจรอบสุดท้าย + เอกสาร | — |
 
 ## เป้าหมาย
@@ -149,7 +149,39 @@ frontend/
 - **`/claims/:id` (รายละเอียด):** ข้อมูลเคลม, timeline, ผลพิจารณาและการจ่ายเงิน, คำขอข้อมูลที่ยังเปิดอยู่พร้อมฟอร์มตอบ และปุ่มยกเลิกเคลม (เฉพาะตอน Submitted)
 - **Tests:** ClaimantApi service, ฟอร์มแจ้งเหตุ (แปลงบาท → สตางค์, incident types เปลี่ยนตาม policy)
 
-### F3 — Staff (Supervisor ใช้หน้าเดียวกันและทำได้ทุก action)
+### F3 — Staff (Supervisor ใช้หน้าเดียวกันและทำได้ทุก action) ✅
+**สรุปสิ่งที่ทำ** (route lazy ใต้ `/staff/claims` ใน `staff/staff.routes.ts`)
+- **`/staff/claims` (Work queue):**
+  - ปุ่มกลุ่ม Waiting to be picked up (ค่าเริ่มต้น) / My claims / All claims ใช้ `aria-pressed`
+  - filter สถานะ + แบ่งหน้า
+  - คอลัมน์ "Handled by" แสดง You / Another officer / Nobody yet
+- **`/staff/claims/:claimId`:**
+  - แผง Actions ตาม `availableActions(status, assignee, me)` ซึ่งเป็นฟังก์ชันล้วนที่ test ได้
+    - ปุ่ม "Pick up this claim"
+    - ฟอร์มใน `<details>`: ขอข้อมูล / ประเมิน / อนุมัติ / ปฏิเสธ / บันทึกการจ่าย (`staff/actions/*`)
+  - ถ้าไม่มี action แสดงเหตุผล (ปิดแล้ว / คนอื่นถืองาน / รอ claimant)
+  - ข้อมูล claimant, policy, เหตุการณ์, ผลประเมินและผลพิจารณา, คำขอข้อมูลทั้งหมด, timeline
+- **ฟอร์มประเมินและอนุมัติ:**
+  - เติมยอดเริ่มต้นจากยอดเคลม/ยอดประเมินด้วย `linkedSignal`
+  - กันยอดเกินฝั่ง client
+  - ส่งเป็นสตางค์
+- **รับงานไม่สำเร็จ** (เช่นคนอื่นรับไปก่อน 409): แสดงข้อความจาก backend แล้วโหลดเคลมใหม่ให้เห็นว่าใครถืองาน
+- **`Pager`** แยกเป็น component ใช้ร่วมกับ My claims (`model()` แบบ two-way)
+- **Type ที่ generate มา:** `StaffClaimQueue` มี `null` (query parameter เป็น optional) จึงใช้ `NonNullable<>` สำหรับแท็บ
+- **ข้อจำกัด:** API รายละเอียดเคลมส่งมาแค่ `assignedStaffId` ไม่มีชื่อ จึงแสดงเป็น "You" / "Another claims officer"
+- **Tests (รวม 85):**
+  - `availableActions` ทุกสถานะ
+  - StaffApi ทั้ง 6 action
+  - WorkQueue: แท็บส่ง queue ถูก, "You" / "Another officer"
+  - StaffClaimDetail:
+    - รับงานแล้ว action เปลี่ยน
+    - 409 แล้วแสดงข้อความ + โหลดใหม่
+    - อนุมัติส่งสตางค์ + ยอดตั้งต้น
+    - กันอนุมัติเกินยอดประเมิน
+    - supervisor ทำ action ได้
+    - เคลมปิดแล้วไม่มี action
+
+**แผนเดิม**
 Supervisor เข้าคิวงาน รับงาน ขอข้อมูล ประเมิน อนุมัติ ปฏิเสธ และจ่ายได้เหมือน staff ทุกอย่าง โดย backend อนุญาตอยู่แล้ว ฝั่ง frontend แค่ให้ guard และ nav รองรับ
 - **`/staff/claims` (คิวงาน):** แท็บ ยังไม่มีคนรับ / ของฉัน / ทั้งหมด + filter สถานะ + แบ่งหน้า
 - **`/staff/claims/:id` (รายละเอียด):** ข้อมูล claimant, policy, ผลประเมิน และ timeline พร้อม **แผง action ตามสถานะ**:

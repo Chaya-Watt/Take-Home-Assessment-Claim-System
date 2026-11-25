@@ -1,19 +1,20 @@
 import { DatePipe } from '@angular/common';
 import { httpResource } from '@angular/common/http';
-import { Component, computed, signal } from '@angular/core';
+import { Component, signal } from '@angular/core';
 import { RouterLink } from '@angular/router';
 import { ClaimStatus, ClaimSummaryPage } from '../core/api/models';
 import { errorMessage } from '../core/api/problem';
 import { ErrorAlert } from '../core/ui/error-alert';
 import { IncidentTypePipe } from '../core/ui/labels';
 import { ThbPipe } from '../core/ui/money';
+import { Pager } from '../core/ui/pager';
 import { claimStatusLabels, StatusBadge } from '../core/ui/status-badge';
 
 const pageSize = 10;
 
 @Component({
   selector: 'app-my-claims',
-  imports: [RouterLink, DatePipe, ThbPipe, IncidentTypePipe, StatusBadge, ErrorAlert],
+  imports: [RouterLink, DatePipe, ThbPipe, IncidentTypePipe, StatusBadge, ErrorAlert, Pager],
   template: `
     <hgroup>
       <h1 tabindex="-1">My claims</h1>
@@ -61,15 +62,7 @@ const pageSize = 10;
           </table>
         </div>
 
-        <nav aria-label="Pagination" class="pager">
-          <button type="button" class="secondary" [disabled]="page() === 1" (click)="page.set(page() - 1)">
-            Previous
-          </button>
-          <span aria-live="polite">Page {{ page() }} of {{ totalPages() }} ({{ result.totalCount }} claims)</span>
-          <button type="button" class="secondary" [disabled]="page() >= totalPages()" (click)="page.set(page() + 1)">
-            Next
-          </button>
-        </nav>
+        <app-pager [(page)]="page" [pageSize]="pageSize" [totalCount]="result.totalCount" itemLabel="claims" />
       }
     } @else {
       <p aria-busy="true">Loading your claims…</p>
@@ -86,10 +79,7 @@ export class MyClaims {
     params: { page: this.page(), pageSize, ...(this.status() ? { status: this.status() } : {}) },
   }));
 
-  protected readonly totalPages = computed(() =>
-    this.claims.hasValue() ? Math.max(1, Math.ceil(this.claims.value().totalCount / pageSize)) : 1,
-  );
-
+  protected readonly pageSize = pageSize;
   protected readonly statusOptions = Object.entries(claimStatusLabels).map(([value, label]) => ({ value, label }));
   protected readonly errorMessage = errorMessage;
 
