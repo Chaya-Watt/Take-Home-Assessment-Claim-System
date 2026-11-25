@@ -8,7 +8,7 @@ Insurance claim system for two groups of users:
 | Part | Stack | Status |
 |---|---|---|
 | `backend/` | .NET 10 Minimal API, EF Core + SQLite, JWT | Done |
-| `frontend/` | Angular 22 | Not started |
+| `frontend/` | Angular 22, Pico.css | In progress — see [docs/frontend-plan.md](docs/frontend-plan.md) |
 
 ## Run the backend
 
@@ -71,6 +71,24 @@ rm backend/src/ClaimSystem.Api/claims.db*
 | http://localhost:5106/openapi/v1.json | OpenAPI document |
 | http://localhost:5106/health | Health check |
 | [`ClaimSystem.Api.http`](backend/src/ClaimSystem.Api/ClaimSystem.Api.http) | Ready-made requests for the whole flow (VS Code REST Client / Rider / Visual Studio) |
+
+## Run the frontend
+
+Requires [Node.js](https://nodejs.org) 22.22+, 24.15+ or 26+ (Angular 22's requirement; check with `node --version`). Start the backend first (above), then in a second terminal:
+
+```bash
+cd frontend
+npm install
+npm start          # http://localhost:4200
+```
+
+The dev server forwards every `/api/...` request to the backend at `http://localhost:5106` (`frontend/proxy.conf.json`), so no URL or CORS setup is needed.
+
+```bash
+npm run build      # production build
+npm test           # unit tests (Vitest)
+npm run gen:api    # regenerate API types from the running backend's OpenAPI document
+```
 
 ### Demo accounts
 

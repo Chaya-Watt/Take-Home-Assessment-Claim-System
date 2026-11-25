@@ -111,6 +111,31 @@ public class AuthTests(WebApplicationFactory<Program> factory)
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
+    [Theory]
+    [InlineData("""{"email": 1, "password": "x"}""")]          // number where text is expected
+    [InlineData("""{"email": "a@example.com", "password": """)] // broken JSON
+    public async Task Login_MalformedBody_Returns400ProblemDetails(string json)
+    {
+        var response = await _client.PostAsync(
+            "/api/auth/login", new StringContent(json, System.Text.Encoding.UTF8, "application/json"), CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("application/problem+json", response.Content.Headers.ContentType?.MediaType);
+    }
+
+    [Fact]
+    public async Task SubmitClaim_AmountAsString_Returns400()
+    {
+        // NumberHandling = Strict: "100" is not accepted for a number field.
+        var client = await factory.CreateClientForAsync("claimant1@example.com");
+
+        var response = await client.PostAsync("/api/claims", new StringContent(
+            """{"policyId":"00000000-0000-0000-0000-000000000000","incidentType":"Collision","incidentDate":"2026-01-01","location":"x","description":"x","claimedAmount":"100"}""",
+            System.Text.Encoding.UTF8, "application/json"), CancellationToken);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     [Fact]
     public async Task Me_WithoutToken_Returns401()
     {

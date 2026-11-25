@@ -1,0 +1,6 @@
+/* Pico.css (classless) is loaded first via angular.json; only small adjustments here. */
+
+/* Tables with many columns scroll horizontally instead of overflowing on small screens. */
+.table-scroll {
+  overflow-x: auto;
+}

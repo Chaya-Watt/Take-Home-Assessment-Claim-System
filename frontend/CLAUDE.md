@@ -4,7 +4,18 @@ Angular app for the claim system. It talks to the backend API at `http://localho
 
 - Use the **Angular CLI MCP server** (`angular-cli` in the repo's `.mcp.json`): `search_documentation` / `get_best_practices` when unsure about an Angular API, `run_target` for build/test, `devserver_start` / `devserver_wait_for_build` to check the app compiles.
 - API amounts are integers in satang (1 THB = 100); timestamps are UTC — convert to the user's local time for display.
-- Follow the working agreement in the root `CLAUDE.md` (one phase at a time, tests + build before review, visible file edits).
+- Follow the working agreement in the root `CLAUDE.md` (one phase at a time, tests + build before review, visible file edits). Plan and phase status: `docs/frontend-plan.md`.
+
+## Commands (run from `frontend/`)
+```bash
+npm start          # ng serve on http://localhost:4200; /api is proxied to the backend (proxy.conf.json)
+npm run build      # must pass
+npm test           # Vitest unit tests, must pass
+npm run gen:api    # regenerate src/app/core/api/schema.d.ts from the running backend's /openapi/v1.json
+```
+- Never edit `src/app/core/api/schema.d.ts` by hand; regenerate it after backend DTO changes and fix what `ng build` reports.
+- `openapi-typescript` runs via `npx` (pinned) because it does not support TypeScript 6 as a dependency yet.
+- Styling is Pico.css (classless): use semantic HTML (`form`, `label`, `table`, `nav`, `article`) instead of custom classes.
 
 ---
 
