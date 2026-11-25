@@ -6,6 +6,7 @@
     <Project Path="src/ClaimSystem.Api/ClaimSystem.Api.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/ClaimSystem.UnitTests/ClaimSystem.UnitTests.csproj" />
     <Project Path="tests/ClaimSystem.IntegrationTests/ClaimSystem.IntegrationTests.csproj" />
   </Folder>
 </Solution>

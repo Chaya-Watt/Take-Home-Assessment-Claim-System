@@ -4,8 +4,8 @@
 | Phase | หัวข้อ | สถานะ |
 |---|---|---|
 | 0 | Scaffolding | ✅ เสร็จ |
-| 1 | Domain model + state machine | ⏳ ถัดไป |
-| 2 | Persistence (EF Core + SQLite) | — |
+| 1 | Domain model + state machine | ✅ เสร็จ |
+| 2 | Persistence (EF Core + SQLite) | ⏳ ถัดไป |
 | 3 | Authentication / Authorization | — |
 | 4 | Claimant: แจ้งเหตุและติดตามสถานะ | — |
 | 5 | Staff: รับเคลมและประเมิน | — |
@@ -38,12 +38,13 @@ frontend/                          Angular 22 (ทำหลัง BE)
 ## Domain หลัก
 - **User**: Id, Email, PasswordHash, FullName, Role
 - **Policy** (seed data): PolicyNumber, `HolderId` (→ User.Id ของผู้ถือกรมธรรม์), ProductType (`Motor` | `Health` | `Property`), SumInsured, StartDate/EndDate
-- **Claim**: ClaimNumber (`CLM-2026-000001`), `ClaimantId` (→ User.Id), PolicyId, IncidentType, IncidentDate, Location, Description, ClaimedAmount, AssessedAmount, AssessmentSummary, ApprovedAmount, Status, `AssignedStaffId` (→ User.Id), SubmittedAt/AssignedAt/DecidedAt/PaidAt, DecisionReason, `Version` (concurrency token)
+- **Claim**: ClaimNumber (`CLM-2026-000001`), `ClaimantId` (→ User.Id), PolicyId, IncidentType, IncidentDate, Location, Description, ClaimedAmount, AssessedAmount, AssessmentSummary, ApprovedAmount, Status, `AssignedStaffId` (→ User.Id), SubmittedAt/AssignedAt/DecidedAt/PaidAt, DecisionReason, PaymentReference, `Version` (concurrency token — เพิ่มใน Phase 2 เป็น shadow property ของ EF)
   - กฎ: `Policy.HolderId == ClaimantId` คือแจ้งเคลมได้เฉพาะกรมธรรม์ของตัวเอง
 - **ClaimDocument**: ไฟล์แนบ (เก็บไฟล์บน disk และเก็บ metadata ใน DB)
 - **InformationRequest**: Message, RequestedBy, DueDate, Status (Open/Responded), ResponseText, RespondedAt
 - **ClaimStatusHistory**: audit trail ของทุก transition ใช้ทำ timeline และคำนวณ performance
-- **Payment**, **Notification**, **OutboxMessage**, **ProcessedMessage**
+- **Notification**, **OutboxMessage**, **ProcessedMessage** (Phase 7)
+- ไม่มี entity `Payment` แยก เพราะหนึ่งเคลมจ่ายครั้งเดียว จึงเก็บ `PaymentReference` + `PaidAt` ไว้บน Claim
 
 จำนวนเงินเก็บเป็น `long` หน่วยสตางค์ (SQLite ทำ SUM/ORDER BY กับ `decimal` ฝั่ง DB ไม่ได้)
 
@@ -59,12 +60,22 @@ frontend/                          Angular 22 (ทำหลัง BE)
 Submitted ──staff assign──▶ UnderReview ──requestInfo──▶ PendingInformation
                                 ▲                               │
                                 └──────claimant responds────────┘
-UnderReview ──assess──▶ Assessed
-Assessed ──approve (ApprovedAmount ≤ AssessedAmount ≤ SumInsured)──▶ Approved ──pay──▶ Paid
+UnderReview ──assess (AssessedAmount ≤ ClaimedAmount)──▶ Assessed
+Assessed ──approve (ApprovedAmount ≤ AssessedAmount)──▶ Approved ──pay──▶ Paid
 UnderReview / Assessed ──reject (ต้องระบุเหตุผล)──▶ Rejected
 Submitted ──claimant withdraw──▶ Withdrawn
 ```
-Transition ทั้งหมดอยู่ใน `Claim` aggregate ถ้า transition ไม่ถูกต้องจะ throw `DomainException` ทุก transition จะบันทึก history และ raise domain event
+(ตอนแจ้งเหตุเช็ค `ClaimedAmount ≤ SumInsured` ไว้แล้ว จึงไม่มียอดไหนเกินทุนประกัน)
+
+Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs](../backend/src/ClaimSystem.Domain/Claims/Claim.cs)) แต่ละเมธอดเช็คตามลำดับ **สถานะ → สิทธิ์ (เจ้าของ / staff ที่รับงาน) → ข้อมูล** แล้วบันทึก `ClaimStatusHistory`
+ถ้าผิดกฎจะ throw `DomainException` พร้อม `Code`:
+
+| Code | ความหมาย | HTTP (map ใน phase หลัง) |
+|---|---|---|
+| `claim.invalid_transition` | ทำ action นี้ในสถานะปัจจุบันไม่ได้ | 409 |
+| `validation` | ข้อมูลผิดกฎ (จำนวนเงิน, วันที่, ประเภทเหตุ, ข้อความว่าง) | 400 |
+| `not_allowed` | ไม่ใช่เจ้าของเคลม / ไม่ใช่ staff ที่รับงาน | 403 |
+| `not_found` | ไม่พบ information request ที่อ้างถึง | 404 |
 
 ---
 
@@ -83,11 +94,11 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ถ้า t
 - Tests: `GET /health` ได้ 200 และ route ที่ไม่มีอยู่ได้ 404 เป็น ProblemDetails
 - *ปรับจากแผนเดิม*: ย้าย unit test project ไปสร้างใน Phase 1 และย้าย `docker-compose.yml` ไป Phase 7
 
-### Phase 1 — Domain model และ state machine
-- สร้าง `tests/ClaimSystem.UnitTests`
-- Entities, enums, mapping IncidentType ↔ ProductType, `Claim` aggregate พร้อม transition methods
-- Domain events: `ClaimSubmitted`, `ClaimAssigned`, `InformationRequested`, `InformationProvided`, `ClaimAssessed`, `ClaimApproved`, `ClaimRejected`, `ClaimPaid`, `ClaimWithdrawn`
-- Tests: transition ที่ถูกและผิดทุกเส้น, กฎจำนวนเงิน, IncidentType
+### Phase 1 — Domain model และ state machine ✅
+- `User`, `Policy`, `Claim` (+ `ClaimStatusHistory`, `InformationRequest`), mapping `IncidentTypes`, `DomainException`
+- เวลาส่งเข้ามาเป็นพารามิเตอร์ `now` (UTC) เพื่อให้ test กำหนดเวลาได้ ส่วน Id ใช้ `Guid.CreateVersion7()` ซึ่งเรียงตามเวลาและ index ได้ดี
+- Tests (`tests/ClaimSystem.UnitTests`): กฎตอนแจ้งเหตุ, flow ที่ถูกต้องทุกเส้น, matrix ของทุก action × ทุกสถานะที่ไม่อนุญาต, สิทธิ์, จำนวนเงิน และ mapping
+- *ปรับจากแผนเดิม*: เลื่อน domain events (`AggregateRoot`/`IDomainEvent`) ไปทำใน Phase 7 พร้อม Kafka และตัด entity `Payment` ออก
 
 ### Phase 2 — Persistence (EF Core + SQLite)
 - `ClaimDbContext`, entity configurations, concurrency token `Version`
@@ -120,6 +131,7 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ถ้า t
 
 ### Phase 7 — Kafka: Outbox + Event consumers
 - `docker-compose.yml`: Kafka (KRaft) + kafka-ui
+- Domain events: เพิ่ม `AggregateRoot` (เก็บรายการ event) ให้ `Claim` และ raise `ClaimSubmitted`, `ClaimAssigned`, `InformationRequested`, `InformationProvided`, `ClaimAssessed`, `ClaimApproved`, `ClaimRejected`, `ClaimPaid`, `ClaimWithdrawn` ในแต่ละ transition
 - SaveChanges interceptor เขียน `OutboxMessage`, `OutboxPublisher` publish ไป `claims.events` (key = ClaimId) ด้วย `Confluent.Kafka`
 - `NotificationConsumer` (idempotent ด้วย `ProcessedMessage`), `GET /api/notifications`, `POST /api/notifications/{id}/read`
 - `Kafka:Enabled=false` ใช้ in-process bus (ใช้ใน tests)

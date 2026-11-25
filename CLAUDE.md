@@ -19,8 +19,10 @@ src/ClaimSystem.Domain          entities, state machine, domain events — no de
 src/ClaimSystem.Application     use cases by feature + ports (interfaces); DI abstractions only, no ASP.NET/EF
 src/ClaimSystem.Infrastructure  EF Core SQLite, JWT, Kafka, file storage — implements Application ports
 src/ClaimSystem.Api             composition root + Minimal API endpoints
+tests/ClaimSystem.UnitTests          domain rules (ClaimFixtures builds claims in any status)
 tests/ClaimSystem.IntegrationTests   WebApplicationFactory<Program>
 ```
+Domain methods take `now` (UTC) as a parameter instead of reading the clock, and throw `DomainException` with a `Code` from `DomainErrors`.
 Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `DependencyInjection.cs`.
 
 ## Conventions
