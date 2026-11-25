@@ -16,6 +16,17 @@ npm run gen:api    # regenerate src/app/core/api/schema.d.ts from the running ba
 - Never edit `src/app/core/api/schema.d.ts` by hand; regenerate it after backend DTO changes and fix what `ng build` reports.
 - `openapi-typescript` runs via `npx` (pinned) because it does not support TypeScript 6 as a dependency yet.
 - Styling is Pico.css (classless): use semantic HTML (`form`, `label`, `table`, `nav`, `article`) instead of custom classes.
+- When checking the dev server yourself, use another port (e.g. `--port 4300`) and stop only that process: the user may have their own `npm start` on 4200.
+
+## Project conventions
+- UI text is **English** (matches the backend's error messages).
+- API types: import from `core/api/models.ts` (aliases over the generated `schema.d.ts`).
+- Errors: show `errorMessage(error)` from `core/api/problem.ts` in `<app-error-alert>`; `errorCode(error)` gives the backend `code`.
+- Money: `thb` pipe for display, `bahtToSatang()` before sending (`core/ui/money.ts`). Status: `<app-status-badge>`.
+- Auth: `AuthStore` (signals: `user`, `role`, `homeUrl`); routes use `authGuard` + `roleGuard(...)` mirroring the backend policies.
+- Every page starts with `<h1 tabindex="-1">`: the shell moves focus to it after each navigation.
+- Forms: Signal Forms with `[formRoot]` + `submission.action`; return `{ kind: 'server', message: errorMessage(e) }` for API errors and show `form().errors()` in `<app-error-alert>`. Each input gets a `<label for>`, `[attr.aria-invalid]="ariaInvalid(field())"`, `aria-describedby` and an `<app-field-error>` below it.
+- Route params / query params / route data reach components as `input()`s (`withComponentInputBinding`).
 
 ---
 

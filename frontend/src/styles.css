@@ -1,6 +1,58 @@
-/* Pico.css (classless) is loaded first via angular.json; only small adjustments here. */
+/* Pico.css (classless) is loaded first via angular.json; only small additions here. */
+
+/* Visible only when focused with the keyboard (WCAG 2.4.1 bypass blocks). */
+.skip-link {
+  position: absolute;
+  left: -9999px;
+}
+.skip-link:focus {
+  left: 1rem;
+  top: 1rem;
+  z-index: 10;
+  padding: 0.5rem 1rem;
+  background: var(--pico-background-color);
+}
+
+/* Page headings receive focus on navigation; no focus ring needed there. */
+h1:focus,
+main:focus {
+  outline: none;
+}
+
+/* Login/register cards. */
+.narrow {
+  max-width: 32rem;
+  margin-inline: auto;
+}
 
 /* Tables with many columns scroll horizontally instead of overflowing on small screens. */
 .table-scroll {
   overflow-x: auto;
 }
+
+/* Server/API error messages. Dark red on light red: contrast above 7:1. */
+.error-alert {
+  padding: 0.75rem 1rem;
+  border-left: 4px solid #b71c1c;
+  background: #fdecea;
+  color: #7f1010;
+}
+
+/* Claim status pill. Text is always dark on a light background (contrast above 7:1 in both themes). */
+.status-badge {
+  display: inline-block;
+  padding: 0.1rem 0.6rem;
+  border-radius: 1rem;
+  font-size: 0.875em;
+  white-space: nowrap;
+  color: #1b1b1b;
+  background: #e8e8e8;
+}
+.status-badge[data-status='Submitted'] { background: #e3f2fd; }
+.status-badge[data-status='UnderReview'] { background: #fff3cd; }
+.status-badge[data-status='PendingInformation'] { background: #ffe0b2; }
+.status-badge[data-status='Assessed'] { background: #e1f5fe; }
+.status-badge[data-status='Approved'] { background: #dcedc8; }
+.status-badge[data-status='Paid'] { background: #c8e6c9; }
+.status-badge[data-status='Rejected'] { background: #ffcdd2; }
+.status-badge[data-status='Withdrawn'] { background: #eeeeee; }

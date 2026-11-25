@@ -4,8 +4,8 @@
 | Phase | หัวข้อ | สถานะ |
 |---|---|---|
 | F0 | Scaffold + types จาก OpenAPI | ✅ เสร็จ |
-| F1 | Auth + layout + ของที่ใช้ร่วมกัน | ⏳ ถัดไป |
-| F2 | Claimant | — |
+| F1 | Auth + layout + ของที่ใช้ร่วมกัน | ✅ เสร็จ |
+| F2 | Claimant | ⏳ ถัดไป |
 | F3 | Staff (Supervisor ใช้ร่วม) | — |
 | F4 | Supervisor dashboard | — |
 | F5 | ตรวจรอบสุดท้าย + เอกสาร | — |
@@ -79,7 +79,30 @@ frontend/
   - เพิ่ม integration test 3 ตัว (ผ่าน 181/181)
 - ✅ `ng build` ผ่าน, `ng test` ผ่าน, dev server เรียก `/api/auth/login` ผ่าน proxy ได้ 200
 
-### F1 — Auth + layout + ของที่ใช้ร่วมกัน
+### F1 — Auth + layout + ของที่ใช้ร่วมกัน ✅
+**สรุปสิ่งที่ทำ**
+- ข้อความบนหน้าจอเป็น **ภาษาอังกฤษ** (ผู้ใช้เลือก) เพื่อให้ตรงกับข้อความ error จาก backend
+- **Shell (`app.ts`):**
+  - nav ตาม role พร้อมชื่อผู้ใช้และปุ่ม Sign out
+  - skip link (`Skip to main content`)
+  - ย้าย focus ไปที่ `<h1>` ของหน้าใหม่หลังเปลี่ยน route
+  - เมนูปัจจุบันมี `aria-current="page"`
+- **Login / Register:** ใช้ Signal Forms (`form` + `[formRoot]` + `[formField]`)
+  - validation ฝั่ง client ตรงกับ backend (email, รหัสผ่าน ≥ 8 ตัว)
+  - error จาก backend แสดงใน `role="alert"`
+  - login กลับไปหน้า `returnUrl` ได้ (เฉพาะ path ภายในแอป กัน open redirect) และบอกเมื่อ session หมดอายุ (`?expired=true`)
+- **ของใช้ร่วม:** `AuthStore`, `authInterceptor`, `authGuard` / `roleGuard`, `ThbPipe` + `bahtToSatang`, `StatusBadge`, `ErrorAlert`, `FieldError` + `ariaInvalid`, `errorMessage` / `errorCode`
+- Route ของ F2–F4 ใช้หน้า `ComingSoon` ชั่วคราว (มี guard ตาม role แล้ว)
+- **Tests (Vitest 38 ตัว):**
+  - money, problem
+  - AuthStore (login/register/restore/หมดอายุ/logout)
+  - interceptor (แนบ token, 401 → logout)
+  - guards (ทุก role × ทุกกลุ่มหน้า)
+  - หน้า Login (validation, สำเร็จ, error จาก server, returnUrl, กัน URL ภายนอก)
+  - shell (nav ตาม role)
+- ตรวจกับ backend จริง: dev server เปิด deep link ได้, proxy ส่ง login ได้ 200 และรหัสผิดได้ 401 พร้อม `detail`
+
+**แผนเดิม**
 - **Types:** `core/api/models.ts` ตั้งชื่อสั้นให้ types ที่ generate มา (AuthResponse, Claim*, Staff*, Dashboard, PagedResult, ClaimStatus ฯลฯ)
 - **AuthStore:** login / register / logout, เก็บ token + user, มี `isLoggedIn` / `role` เป็น `computed`, และเคลียร์ token เมื่อหมดอายุ (`expiresAt`)
 - **Interceptor:** แนบ `Authorization: Bearer` และเมื่อได้ 401 ให้ logout แล้วพาไปหน้า login
