@@ -33,7 +33,7 @@ Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `Depe
 
 ## Conventions
 - **Minimal APIs** (not controllers): one file per feature, grouped with `MapGroup` + `RequireAuthorization`.
-- Errors are ProblemDetails (`AddProblemDetails` + `UseExceptionHandler`); `DomainExceptionHandler` maps `DomainErrors` codes to 400/403/404/409.
+- Errors are ProblemDetails (`AddProblemDetails` + `UseExceptionHandler`); `DomainExceptionHandler` maps `DomainErrors` codes to 400/403/404/409 and `ConcurrencyExceptionHandler` maps `DbUpdateConcurrencyException` to 409.
 - Use cases are services in `Application/<Feature>` that talk to the DB only through ports (`I...Repository`, `IUnitOfWork`). Endpoints pass the caller's id (`User.GetUserId()`) into them.
 - Auth: JWT with claims `sub`/`role` (`AuthClaims`); endpoint groups use `AuthorizationPolicies.ClaimantOnly` / `StaffOrSupervisor` / `SupervisorOnly`.
 - Money stored as `long` in satang (SQLite can't SUM/ORDER BY `decimal` server-side).

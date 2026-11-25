@@ -12,5 +12,10 @@ public interface IClaimRepository
     Task<PagedResult<Claim>> ListByClaimantAsync(
         Guid claimantId, ClaimStatus? status, int page, int pageSize, CancellationToken cancellationToken = default);
 
+    /// <summary>Newest first. <paramref name="queue"/> null = all claims.</summary>
+    Task<PagedResult<Claim>> ListForStaffAsync(
+        Guid staffId, StaffClaimQueue? queue, ClaimStatus? status, int page, int pageSize,
+        CancellationToken cancellationToken = default);
+
     void Add(Claim claim);
 }

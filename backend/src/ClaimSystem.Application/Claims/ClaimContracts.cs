@@ -12,6 +12,8 @@ public sealed record SubmitClaimRequest(
     string Description,
     long ClaimedAmount);
 
+public sealed record InformationResponseRequest(string Response);
+
 public sealed record ClaimSummaryResponse(
     Guid Id,
     string ClaimNumber,

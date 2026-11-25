@@ -37,9 +37,7 @@ public sealed class ClaimantClaimService(
     public async Task<PagedResult<ClaimSummaryResponse>> ListMineAsync(
         Guid claimantId, ClaimStatus? status, int page, int pageSize, CancellationToken cancellationToken = default)
     {
-        page = Math.Max(1, page);
-        pageSize = Math.Clamp(pageSize, 1, PagedResult<ClaimSummaryResponse>.MaxPageSize);
-
+        (page, pageSize) = PagedResult<Claim>.Normalize(page, pageSize);
         var result = await claims.ListByClaimantAsync(claimantId, status, page, pageSize, cancellationToken);
         return result.Map(ClaimSummaryResponse.From);
     }
@@ -54,6 +52,17 @@ public sealed class ClaimantClaimService(
     {
         var claim = await LoadOwnedAsync(claimantId, claimId, cancellationToken);
         claim.Withdraw(claimantId, Now());
+        await unitOfWork.SaveChangesAsync(cancellationToken);
+
+        return await ToDetailAsync(claim, cancellationToken);
+    }
+
+    /// <summary>Answers a staff information request; the claim goes back to UnderReview.</summary>
+    public async Task<ClaimDetailResponse> RespondToInformationRequestAsync(
+        Guid claimantId, Guid claimId, Guid requestId, InformationResponseRequest request, CancellationToken cancellationToken = default)
+    {
+        var claim = await LoadOwnedAsync(claimantId, claimId, cancellationToken);
+        claim.ProvideInformation(claimantId, requestId, request.Response, Now());
         await unitOfWork.SaveChangesAsync(cancellationToken);
 
         return await ToDetailAsync(claim, cancellationToken);

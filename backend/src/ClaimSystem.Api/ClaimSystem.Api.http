@@ -74,3 +74,50 @@ Authorization: Bearer {{token}}
 ### Withdraw (only while Submitted)
 POST {{host}}/api/claims/{{claimId}}/withdraw
 Authorization: Bearer {{token}}
+
+###
+@requestId = paste-information-request-id-here
+
+### Answer a staff information request (claim goes back to UnderReview)
+POST {{host}}/api/claims/{{claimId}}/information-requests/{{requestId}}/response
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "response": "Police report no. 1234/2569"
+}
+
+### ---------------------------------------------------------------- Staff (log in as staff1 and paste into @staffToken)
+@staffToken = paste-staff-access-token-here
+
+### Work queue: queue=Unassigned | Mine (omit for all), optional status, page, pageSize
+GET {{host}}/api/staff/claims?queue=Unassigned
+Authorization: Bearer {{staffToken}}
+
+### Full claim detail (incl. claimant, policy, assessment)
+GET {{host}}/api/staff/claims/{{claimId}}
+Authorization: Bearer {{staffToken}}
+
+### Pick up the claim (409 if someone already has it)
+POST {{host}}/api/staff/claims/{{claimId}}/assign
+Authorization: Bearer {{staffToken}}
+
+### Ask the claimant for more information
+POST {{host}}/api/staff/claims/{{claimId}}/information-requests
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "message": "Please send the police report number",
+  "dueDate": "2026-12-02"
+}
+
+### Assess (amount in satang, must not exceed the claimed amount)
+POST {{host}}/api/staff/claims/{{claimId}}/assessment
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "assessedAmount": 3500000,
+  "summary": "Repair quote checked; bumper and tail light"
+}

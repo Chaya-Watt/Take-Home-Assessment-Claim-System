@@ -3,6 +3,9 @@ using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using ClaimSystem.Application.Auth;
+using ClaimSystem.Application.Claims;
+using ClaimSystem.Application.Policies;
+using ClaimSystem.Domain.Common;
 using ClaimSystem.Infrastructure.Persistence;
 using Microsoft.AspNetCore.Mvc.Testing;
 
@@ -31,6 +34,26 @@ internal static class TestApi
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", auth.AccessToken);
         return client;
     }
+
+    /// <summary>Submits a claim dated today on one of the signed-in claimant's policies.</summary>
+    public static async Task<ClaimDetailResponse> SubmitClaimAsync(
+        this HttpClient claimant, string policyNumber = "POL-MTR-0001", long claimedAmount = 20_000_00)
+    {
+        var policies = await claimant.GetFromJsonAsync<List<PolicyResponse>>("/api/policies/mine", Json, CancellationToken);
+        var policy = policies!.Single(p => p.PolicyNumber == policyNumber);
+
+        var response = await claimant.PostJsonAsync("/api/claims", new SubmitClaimRequest(
+            policy.Id, policy.IncidentTypes[0], BusinessCalendar.Today(DateTime.UtcNow),
+            "Bangkok", "Test incident", claimedAmount));
+        response.EnsureSuccessStatusCode();
+        return await response.ReadAsync<ClaimDetailResponse>();
+    }
+
+    /// <summary>POST with an optional JSON body, using the API's JSON options.</summary>
+    public static Task<HttpResponseMessage> PostJsonAsync(this HttpClient client, string url, object? body = null) =>
+        body is null
+            ? client.PostAsync(url, null, CancellationToken)
+            : client.PostAsJsonAsync(url, body, Json, CancellationToken);
 
     public static async Task<T> ReadAsync<T>(this HttpResponseMessage response) =>
         await response.Content.ReadFromJsonAsync<T>(Json, CancellationToken)

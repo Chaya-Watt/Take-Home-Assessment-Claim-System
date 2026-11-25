@@ -17,6 +17,7 @@ builder.Services.AddAuthorizationPolicies();
 builder.Services.AddOpenApi();
 builder.Services.AddProblemDetails(); // error responses as RFC 9457 ProblemDetails
 builder.Services.AddExceptionHandler<DomainExceptionHandler>(); // DomainException -> 400/403/404/409
+builder.Services.AddExceptionHandler<ConcurrencyExceptionHandler>(); // simultaneous saves -> 409
 builder.Services.AddHealthChecks();
 builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter())); // "Claimant", not 0
@@ -50,5 +51,6 @@ app.MapHealthChecks("/health");
 app.MapAuthEndpoints();
 app.MapPolicyEndpoints();
 app.MapClaimantClaimEndpoints();
+app.MapStaffClaimEndpoints();
 
 app.Run();

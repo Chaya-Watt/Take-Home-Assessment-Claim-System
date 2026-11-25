@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace ClaimSystem.Api.Claims;
 
-/// <summary>Claimant endpoints: report an incident, track own claims, withdraw.</summary>
+/// <summary>Claimant endpoints: report an incident, track own claims, answer information requests, withdraw.</summary>
 public static class ClaimantClaimEndpoints
 {
     public static IEndpointRouteBuilder MapClaimantClaimEndpoints(this IEndpointRouteBuilder app)
@@ -20,6 +20,7 @@ public static class ClaimantClaimEndpoints
         group.MapGet("/mine", ListMine);
         group.MapGet("/{claimId:guid}", Get);
         group.MapPost("/{claimId:guid}/withdraw", Withdraw);
+        group.MapPost("/{claimId:guid}/information-requests/{requestId:guid}/response", RespondToInformationRequest);
 
         return app;
     }
@@ -43,4 +44,10 @@ public static class ClaimantClaimEndpoints
     private static async Task<Ok<ClaimDetailResponse>> Withdraw(
         Guid claimId, ClaimsPrincipal user, ClaimantClaimService claims, CancellationToken cancellationToken) =>
         TypedResults.Ok(await claims.WithdrawAsync(user.GetUserId(), claimId, cancellationToken));
+
+    private static async Task<Ok<ClaimDetailResponse>> RespondToInformationRequest(
+        Guid claimId, Guid requestId, InformationResponseRequest request, ClaimsPrincipal user,
+        ClaimantClaimService claims, CancellationToken cancellationToken) =>
+        TypedResults.Ok(await claims.RespondToInformationRequestAsync(
+            user.GetUserId(), claimId, requestId, request, cancellationToken));
 }

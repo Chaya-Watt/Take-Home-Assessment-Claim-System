@@ -8,8 +8,8 @@
 | 2 | Persistence (EF Core + SQLite) | ✅ เสร็จ |
 | 3 | Authentication / Authorization | ✅ เสร็จ |
 | 4 | Claimant: แจ้งเหตุและติดตามสถานะ | ✅ เสร็จ |
-| 5 | Staff: รับเคลมและประเมิน | ⏳ ถัดไป |
-| 6 | ตัดสินผลและจ่ายค่าสินไหม | — |
+| 5 | Staff: รับเคลมและประเมิน | ✅ เสร็จ |
+| 6 | ตัดสินผลและจ่ายค่าสินไหม | ⏳ ถัดไป |
 | 7 | Kafka: events + notification consumer | — |
 | 8 | Reporting | — |
 | 9 | Hardening + เอกสาร | — |
@@ -137,12 +137,16 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - Tests: unit (กฎ timezone) และ integration (policies, flow แจ้งเหตุ → รายการ → รายละเอียด, 403/400/404 ตอนแจ้ง, ownership 404, filter + paging, withdraw ซ้ำ 409, Staff เรียกได้ 403, ไม่มี token ได้ 401)
 - *ปรับจากแผนเดิม*: ตัดการแนบไฟล์ (`ClaimDocument`, upload/download) ออก เพราะโจทย์ไม่ได้ขอ
 
-### Phase 5 — Staff: รับเคลมและตรวจสอบ/ประเมิน
-- `GET /api/staff/claims` (queue: unassigned / assignedToMe, filter + pagination)
-- `POST /api/staff/claims/{id}/assign` (ถ้ามีคนรับไปแล้วได้ 409 รวมถึงกรณีชนกันพร้อมกัน `DbUpdateConcurrencyException`), `GET /api/staff/claims/{id}`
-- ขอข้อมูลเพิ่ม: `POST /api/staff/claims/{id}/information-requests` และ claimant ตอบเป็นข้อความผ่าน `POST /api/claims/{id}/information-requests/{reqId}/response`
-- `POST /api/staff/claims/{id}/assessment`
-- Tests: flow รับงาน → ขอข้อมูล → claimant ตอบ → ประเมิน
+### Phase 5 — Staff: รับเคลมและตรวจสอบ/ประเมิน ✅
+- Endpoints `/api/staff/claims` (`StaffOrSupervisor`):
+  - `GET /?queue=Unassigned|Mine&status=&page=&pageSize=` (ไม่ใส่ queue = ทั้งหมด, ใหม่สุดก่อน)
+  - `GET /{id}`: รายละเอียดเต็มรวมข้อมูล claimant, policy และผลประเมิน
+  - `POST /{id}/assign` (รับงานเอง), `POST /{id}/information-requests`, `POST /{id}/assessment`
+  - ทุก action คืนรายละเอียดเคลมที่อัปเดตแล้ว
+- Claimant ตอบเป็นข้อความผ่าน `POST /api/claims/{id}/information-requests/{reqId}/response` แล้วเคลมกลับเป็น UnderReview
+- Staff ทุกคนดูเคลมได้ทุกใบ แต่ทำ action ได้เฉพาะคนที่รับงาน (domain ตอบ 403)
+- `ConcurrencyExceptionHandler`: save ชนกัน (`DbUpdateConcurrencyException`) ได้ **409** `concurrency_conflict`
+- Tests: flow รับงาน → ขอข้อมูล → claimant ตอบ → ประเมิน, queue Unassigned/Mine, supervisor ทำงานได้, รับงานซ้ำ 409, รับงานพร้อมกัน 2 คน (ได้ 200 + 409), staff ที่ไม่ได้รับงาน 403, ยอดเกิน 400, due date ย้อนหลัง 400, claimant อื่นตอบ 404, claimant เรียก staff endpoint 403
 
 ### Phase 6 — ตัดสินผลและจ่ายค่าสินไหม
 - `POST /api/staff/claims/{id}/approve`, `.../reject` (ต้องมีเหตุผล), `.../pay` (สร้าง reference แบบ mock)
