@@ -14,15 +14,13 @@ export const routes: Routes = [
   { path: 'login', title: 'Sign in', loadComponent: () => import('./auth/login').then((m) => m.Login) },
   { path: 'register', title: 'Register', loadComponent: () => import('./auth/register').then((m) => m.Register) },
 
-  // Placeholders until phases F2–F4 build these screens.
   {
     path: 'claims',
     canActivate: [authGuard, roleGuard('Claimant')],
-    children: [
-      { path: '', title: 'My claims', loadComponent: comingSoon, data: { heading: 'My claims', phase: 'F2' } },
-      { path: 'new', title: 'Report an incident', loadComponent: comingSoon, data: { heading: 'Report an incident', phase: 'F2' } },
-    ],
+    loadChildren: () => import('./claimant/claimant.routes').then((m) => m.claimantRoutes),
   },
+
+  // Placeholders until phases F3–F4 build these screens.
   {
     path: 'staff/claims',
     canActivate: [authGuard, roleGuard('Staff', 'Supervisor')],

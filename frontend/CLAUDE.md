@@ -27,6 +27,14 @@ npm run gen:api    # regenerate src/app/core/api/schema.d.ts from the running ba
 - Every page starts with `<h1 tabindex="-1">`: the shell moves focus to it after each navigation.
 - Forms: Signal Forms with `[formRoot]` + `submission.action`; return `{ kind: 'server', message: errorMessage(e) }` for API errors and show `form().errors()` in `<app-error-alert>`. Each input gets a `<label for>`, `[attr.aria-invalid]="ariaInvalid(field())"`, `aria-describedby` and an `<app-field-error>` below it.
 - Route params / query params / route data reach components as `input()`s (`withComponentInputBinding`).
+- Reads: `httpResource` in the page (guard with `hasValue()`; show `errorMessage(resource.error())`). Writes: a `@Service()` API class returning `Promise<updated entity>`; set it back with `resource.set(updated)`.
+- Dates: timestamps (`...At`) with `date: 'medium'` (local time); `DateOnly` fields (`incidentDate`, `dueDate`) with `date: 'mediumDate' : 'UTC'` so the calendar day never shifts.
+- Signal Forms set `min`/`max`/`required` attributes themselves: don't put them on `[formField]` inputs (NG8022); use validators.
+
+## Testing (Vitest)
+- `httpResource` keeps the app unstable until its request is answered, so `await fixture.whenStable()` before flushing hangs. Pattern: create/act → `TestBed.tick()` → `backend.expectOne(...).flush(...)` → `await fixture.whenStable()`.
+- After an async form submission, use `await vi.waitFor(() => ...)` for the result (navigation, alert text).
+- Test data builders live in `src/testing/` (excluded from the app build): `fakeSession`, `storeSession`, `fakeClaim`, `motorPolicy`.
 
 ---
 

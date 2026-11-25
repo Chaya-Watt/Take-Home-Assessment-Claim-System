@@ -25,6 +25,42 @@ main:focus {
   margin-inline: auto;
 }
 
+/* Read by screen readers, hidden on screen (e.g. table captions). */
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* Buttons/links side by side (form actions, pagination). */
+.actions,
+.pager {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+.actions > *,
+.pager > * {
+  width: auto;
+  margin-bottom: 0;
+}
+
+/* Claim timeline: status, time, optional note. */
+.timeline li {
+  margin-bottom: 0.75rem;
+}
+.timeline time {
+  margin-left: 0.5rem;
+  color: var(--pico-muted-color);
+}
+.timeline p {
+  margin: 0.25rem 0 0;
+}
+
 /* Tables with many columns scroll horizontally instead of overflowing on small screens. */
 .table-scroll {
   overflow-x: auto;

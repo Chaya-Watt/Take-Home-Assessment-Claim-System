@@ -5,8 +5,8 @@
 |---|---|---|
 | F0 | Scaffold + types จาก OpenAPI | ✅ เสร็จ |
 | F1 | Auth + layout + ของที่ใช้ร่วมกัน | ✅ เสร็จ |
-| F2 | Claimant | ⏳ ถัดไป |
-| F3 | Staff (Supervisor ใช้ร่วม) | — |
+| F2 | Claimant | ✅ เสร็จ |
+| F3 | Staff (Supervisor ใช้ร่วม) | ⏳ ถัดไป |
 | F4 | Supervisor dashboard | — |
 | F5 | ตรวจรอบสุดท้าย + เอกสาร | — |
 
@@ -120,7 +120,27 @@ frontend/
 - **ของใช้ร่วม:** `thb` pipe, `StatusBadge`, `ErrorAlert`, helper อ่าน ProblemDetails
 - **Tests:** AuthStore (HttpTestingController), interceptor, guards, thb pipe
 
-### F2 — Claimant
+### F2 — Claimant ✅
+**สรุปสิ่งที่ทำ** (route lazy ใต้ `/claims` ใน `claimant/claimant.routes.ts`)
+- **`/claims`:** ตาราง (เลขเคลมกดเข้าได้, ประเภทเหตุ+วันที่, ยอด, สถานะ, เวลาส่ง), filter สถานะ, ก่อนหน้า/ถัดไป, ข้อความเมื่อยังไม่มีเคลม
+- **`/claims/new`:**
+  - dropdown ประเภทเหตุถูกปิดจนกว่าจะเลือก policy แล้วแสดงเฉพาะประเภทที่ policy นั้นคุ้มครอง (เปลี่ยน policy จะล้างค่าที่เลือก)
+  - เช็คฝั่ง client: วันที่ไม่อยู่ในอนาคต, ยอด > 0 และไม่เกินทุนประกัน
+  - ส่งเป็นสตางค์ แล้วพาไปหน้ารายละเอียดเคลมใหม่
+- **`/claims/:claimId`:**
+  - กล่อง "We need more information" พร้อมฟอร์มตอบ (`AnswerRequest`) และคำตอบที่เคยให้ไป
+  - ผลพิจารณา (ยอดอนุมัติ, เหตุผล/หมายเหตุ, เลขอ้างอิงการจ่าย), รายละเอียด, timeline
+  - ปุ่ม withdraw แบบต้องยืนยัน (เฉพาะ Submitted) ถ้าล้มเหลวจะโหลดสถานะล่าสุดใหม่
+- **ใช้ร่วมกับ F3:** `ClaimTimeline`, `IncidentTypePipe`, `todayIsoDate`
+- **ไม่ได้ใช้ `linkedSignal` ตามแผน:** model ของ Signal Forms เป็น signal เดียว จึงใช้ `computed` (รายการประเภทเหตุ) + ล้างค่าเมื่อเปลี่ยน policy ซึ่งง่ายกว่า
+- **Tests (รวม 58):**
+  - ClaimantApi
+  - labels
+  - NewClaim: ประเภทตาม policy, ส่งเป็นสตางค์ + ไปหน้าเคลม, กันยอดเกินทุนประกัน, error จาก backend
+  - MyClaims: แสดงแถว, filter กลับไปหน้า 1, ว่าง
+  - ClaimDetail: แสดงข้อมูล, withdraw, ไม่มีปุ่ม withdraw หลังมีคนรับ, ตอบคำขอข้อมูล, ผลพิจารณา + การจ่าย
+
+**แผนเดิม**
 - **`/claims` (เคลมของฉัน):** ตาราง + filter สถานะ + แบ่งหน้า ใช้ `httpResource` ตาม signal ของ filter/page
 - **`/claims/new` (แจ้งเหตุ):**
   - เลือก policy จาก `GET /api/policies/mine` แล้ว dropdown IncidentType เปลี่ยนตาม policy (`linkedSignal`)
