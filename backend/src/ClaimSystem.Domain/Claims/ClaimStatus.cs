@@ -15,3 +15,10 @@ public enum ClaimStatus
     Paid,
     Withdrawn,
 }
+
+public static class ClaimStatusExtensions
+{
+    /// <summary>Paid, Rejected and Withdrawn are final: nothing more can happen to the claim.</summary>
+    public static bool IsFinal(this ClaimStatus status) =>
+        status is ClaimStatus.Paid or ClaimStatus.Rejected or ClaimStatus.Withdrawn;
+}

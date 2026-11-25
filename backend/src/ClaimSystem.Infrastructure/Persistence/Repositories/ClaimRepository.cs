@@ -32,6 +32,20 @@ internal sealed class ClaimRepository(ClaimDbContext db) : IClaimRepository
         return PageAsync(Filter(query, status), page, pageSize, cancellationToken);
     }
 
+    public async Task<IReadOnlyDictionary<ClaimStatus, int>> CountByStatusAsync(CancellationToken cancellationToken = default) =>
+        await db.Claims
+            .GroupBy(c => c.Status)
+            .Select(g => new { Status = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.Status, x => x.Count, cancellationToken);
+
+    public async Task<IReadOnlyList<OpenClaimSnapshot>> ListOpenAsync(CancellationToken cancellationToken = default) =>
+        await db.Claims
+            .Where(c => c.Status != ClaimStatus.Paid && c.Status != ClaimStatus.Rejected && c.Status != ClaimStatus.Withdrawn)
+            .Select(c => new OpenClaimSnapshot(
+                c.Id, c.ClaimNumber, c.Status, c.AssignedStaffId, c.SubmittedAt,
+                c.History.Max(h => h.ChangedAt))) // every claim has at least the "Submitted" entry
+            .ToListAsync(cancellationToken);
+
     public void Add(Claim claim) => db.Claims.Add(claim);
 
     private static IQueryable<Claim> Filter(IQueryable<Claim> query, ClaimStatus? status) =>

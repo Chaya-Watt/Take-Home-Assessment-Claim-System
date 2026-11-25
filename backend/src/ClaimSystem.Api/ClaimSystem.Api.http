@@ -149,3 +149,10 @@ Content-Type: application/json
 {
   "paymentReference": "TRF-20261125-0001"
 }
+
+### ---------------------------------------------------------------- Supervisor (log in as supervisor@example.com)
+@supervisorToken = paste-supervisor-access-token-here
+
+### Team dashboard: claims per status, unassigned, longest waiting, who is working on what
+GET {{host}}/api/supervisor/dashboard
+Authorization: Bearer {{supervisorToken}}

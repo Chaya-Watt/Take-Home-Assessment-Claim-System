@@ -10,8 +10,8 @@
 | 4 | Claimant: แจ้งเหตุและติดตามสถานะ | ✅ เสร็จ |
 | 5 | Staff: รับเคลมและประเมิน | ✅ เสร็จ |
 | 6 | ตัดสินผลและจ่ายค่าสินไหม | ✅ เสร็จ |
-| 7 | Supervisor dashboard | ⏳ ถัดไป |
-| 8 | เอกสาร (README) | — |
+| 7 | Supervisor dashboard | ✅ เสร็จ |
+| 8 | เอกสาร (README) | ⏳ ถัดไป |
 | — | Kafka notification | ถ้ามีเวลา (ดูท้ายเอกสาร) |
 
 ## ข้อตกลงหลัก
@@ -155,14 +155,16 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - Rejected และ Paid เป็นสถานะจบ ทำอะไรต่อไม่ได้ (409) และ claimant เห็นยอดอนุมัติ เหตุผล และเลขอ้างอิงการจ่ายใน `GET /api/claims/{id}`
 - Tests: approve → pay แล้ว claimant เห็นผลครบ, reject แล้ว claimant เห็นเหตุผลและทำต่อไม่ได้, อนุมัติเกินยอดประเมิน 400, reject ไม่มีเหตุผล 400, pay ก่อนอนุมัติ 409, staff ที่ไม่ได้รับงาน 403
 
-### Phase 7 — Supervisor dashboard
-`GET /api/supervisor/dashboard` (`SupervisorOnly`) คำนวณสดจากตาราง Claims ไม่มีตารางเพิ่ม ตอบ 3 คำถาม:
-- **เคลมค้างที่สถานะไหน**: จำนวนเคลมแยกตามสถานะ
-- **เคลมไหนยังไม่มีคนรับ**: จำนวน + รายการ Submitted ที่รอนานที่สุด
-- **ใครดูเคลมไหนอยู่**: staff/supervisor แต่ละคนถืองานที่ยังไม่จบกี่ใบ แยกตามสถานะ พร้อมรายการเคลม
-- รายการเคลมที่ยังไม่จบซึ่งค้างอยู่ในสถานะปัจจุบันนานที่สุด (สถานะ, คนรับ, ค้างมาตั้งแต่เมื่อไหร่)
+### Phase 7 — Supervisor dashboard ✅
+`GET /api/supervisor/dashboard` (`SupervisorOnly`) คำนวณสดจากตาราง Claims + ClaimStatusHistory ไม่มีตารางเพิ่ม:
+- `claimsByStatus`: จำนวนเคลมทุกสถานะ (สถานะที่ไม่มีเคลมได้ 0) ตอบว่าเคลมค้างอยู่ที่สถานะไหน
+- `unassignedCount` + `oldestUnassigned` (10 ใบที่รอนานสุด) ตอบว่าเคลมไหนยังไม่มีคนรับ
+- `staff[]`: staff/supervisor แต่ละคนมีงานที่ยังไม่จบกี่ใบ (`openClaims`, `openClaimsByStatus`) และเป็นใบไหน (`claims`) ตอบว่าใครดูเคลมไหนอยู่
+- `longestInCurrentStatus`: 10 ใบที่ค้างในสถานะปัจจุบันนานที่สุด โดย `inStatusSince` = เวลาของ history ล่าสุด
+- เคลมที่ "ยังไม่จบ" = ไม่ใช่ Paid/Rejected/Withdrawn (`ClaimStatus.IsFinal()`)
+- ดึงเคลมที่ยังไม่จบมาจัดกลุ่มในหน่วยความจำ (`SupervisorDashboardService`) ซึ่งพอสำหรับขนาดทีม ถ้าข้อมูลโตมากค่อยย้ายไป SQL aggregate
 - ดูรายละเอียดเคลมต่อได้ด้วย `GET /api/staff/claims/{id}` ที่มีอยู่แล้ว
-- Tests: ตัวเลขเปลี่ยนตามที่สร้าง/รับ/ตัดสินเคลม, Staff เรียกได้ 403
+- Tests: unit (`IsFinal` ตรงกับ state machine) และ integration (ตัวเลขเปลี่ยนตาม submit → assign → reject, ลำดับ list, มีเฉพาะเคลมที่ยังไม่จบ, Staff/Claimant ได้ 403)
 
 ### Phase 8 — เอกสาร
 - README (วิธีรัน, seed accounts, state machine, API overview, trade-off ที่เลือก, สิ่งที่จะทำถ้ามีเวลา) และ `.http` ครบทุก endpoint

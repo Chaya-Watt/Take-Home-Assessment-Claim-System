@@ -1,6 +1,7 @@
 using ClaimSystem.Application.Auth;
 using ClaimSystem.Application.Claims;
 using ClaimSystem.Application.Policies;
+using ClaimSystem.Application.Supervisor;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace ClaimSystem.Application;
@@ -14,6 +15,7 @@ public static class DependencyInjection
         services.AddScoped<PolicyService>();
         services.AddScoped<ClaimantClaimService>();
         services.AddScoped<StaffClaimService>();
+        services.AddScoped<SupervisorDashboardService>();
         return services;
     }
 }

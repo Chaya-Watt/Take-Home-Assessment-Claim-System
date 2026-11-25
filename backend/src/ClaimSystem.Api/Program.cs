@@ -3,6 +3,7 @@ using ClaimSystem.Api.Auth;
 using ClaimSystem.Api.Claims;
 using ClaimSystem.Api.Errors;
 using ClaimSystem.Api.Policies;
+using ClaimSystem.Api.Supervisor;
 using ClaimSystem.Application;
 using ClaimSystem.Infrastructure;
 using ClaimSystem.Infrastructure.Persistence;
@@ -52,5 +53,6 @@ app.MapAuthEndpoints();
 app.MapPolicyEndpoints();
 app.MapClaimantClaimEndpoints();
 app.MapStaffClaimEndpoints();
+app.MapSupervisorEndpoints();
 
 app.Run();

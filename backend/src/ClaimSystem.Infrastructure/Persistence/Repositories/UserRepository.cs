@@ -21,5 +21,11 @@ internal sealed class UserRepository(ClaimDbContext db) : IUserRepository
         return db.Users.AnyAsync(u => u.Email == normalized, cancellationToken);
     }
 
+    public async Task<IReadOnlyList<User>> ListStaffAsync(CancellationToken cancellationToken = default) =>
+        await db.Users.AsNoTracking()
+            .Where(u => u.Role == UserRole.Staff || u.Role == UserRole.Supervisor)
+            .OrderBy(u => u.FullName)
+            .ToListAsync(cancellationToken);
+
     public void Add(User user) => db.Users.Add(user);
 }

@@ -17,5 +17,20 @@ public interface IClaimRepository
         Guid staffId, StaffClaimQueue? queue, ClaimStatus? status, int page, int pageSize,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Number of claims in each status (statuses with no claims are left out).</summary>
+    Task<IReadOnlyDictionary<ClaimStatus, int>> CountByStatusAsync(CancellationToken cancellationToken = default);
+
+    /// <summary>All claims that are not final, with the time they entered their current status.</summary>
+    Task<IReadOnlyList<OpenClaimSnapshot>> ListOpenAsync(CancellationToken cancellationToken = default);
+
     void Add(Claim claim);
 }
+
+/// <summary>A lightweight read of an open claim for the supervisor dashboard.</summary>
+public sealed record OpenClaimSnapshot(
+    Guid Id,
+    string ClaimNumber,
+    ClaimStatus Status,
+    Guid? AssignedStaffId,
+    DateTime SubmittedAt,
+    DateTime InStatusSince);

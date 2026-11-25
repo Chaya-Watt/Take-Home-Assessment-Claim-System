@@ -46,6 +46,26 @@ public class ClaimRulesTests
         Assert.Equal(status, claim.Status); // unchanged
     }
 
+    [Theory]
+    [InlineData(ClaimStatus.Submitted, false)]
+    [InlineData(ClaimStatus.UnderReview, false)]
+    [InlineData(ClaimStatus.PendingInformation, false)]
+    [InlineData(ClaimStatus.Assessed, false)]
+    [InlineData(ClaimStatus.Approved, false)]
+    [InlineData(ClaimStatus.Paid, true)]
+    [InlineData(ClaimStatus.Rejected, true)]
+    [InlineData(ClaimStatus.Withdrawn, true)]
+    public void IsFinal_OnlyForStatusesWithNoFurtherActions(ClaimStatus status, bool expected)
+    {
+        Assert.Equal(expected, status.IsFinal());
+
+        // Cross-check with the state machine: a final status allows no action at all.
+        if (expected)
+        {
+            Assert.DoesNotContain(AllowedFrom.Values, allowed => allowed.Contains(status));
+        }
+    }
+
     [Fact]
     public void Assign_AlreadyAssignedClaim_ThrowsInvalidTransition()
     {
