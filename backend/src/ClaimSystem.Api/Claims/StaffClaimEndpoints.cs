@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace ClaimSystem.Api.Claims;
 
-/// <summary>Staff (and supervisor) endpoints: work queue, pick up a claim, request information, assess.</summary>
+/// <summary>Staff (and supervisor) endpoints: work queue, pick up, request information, assess, approve/reject, pay.</summary>
 public static class StaffClaimEndpoints
 {
     public static IEndpointRouteBuilder MapStaffClaimEndpoints(this IEndpointRouteBuilder app)
@@ -21,6 +21,9 @@ public static class StaffClaimEndpoints
         group.MapPost("/{claimId:guid}/assign", AssignToMe);
         group.MapPost("/{claimId:guid}/information-requests", RequestInformation);
         group.MapPost("/{claimId:guid}/assessment", Assess);
+        group.MapPost("/{claimId:guid}/approve", Approve);
+        group.MapPost("/{claimId:guid}/reject", Reject);
+        group.MapPost("/{claimId:guid}/pay", Pay);
 
         return app;
     }
@@ -48,4 +51,19 @@ public static class StaffClaimEndpoints
         Guid claimId, AssessClaimRequest request, ClaimsPrincipal user, StaffClaimService claims,
         CancellationToken cancellationToken) =>
         TypedResults.Ok(await claims.AssessAsync(user.GetUserId(), claimId, request, cancellationToken));
+
+    private static async Task<Ok<StaffClaimDetailResponse>> Approve(
+        Guid claimId, ApproveClaimRequest request, ClaimsPrincipal user, StaffClaimService claims,
+        CancellationToken cancellationToken) =>
+        TypedResults.Ok(await claims.ApproveAsync(user.GetUserId(), claimId, request, cancellationToken));
+
+    private static async Task<Ok<StaffClaimDetailResponse>> Reject(
+        Guid claimId, RejectClaimRequest request, ClaimsPrincipal user, StaffClaimService claims,
+        CancellationToken cancellationToken) =>
+        TypedResults.Ok(await claims.RejectAsync(user.GetUserId(), claimId, request, cancellationToken));
+
+    private static async Task<Ok<StaffClaimDetailResponse>> Pay(
+        Guid claimId, PayClaimRequest request, ClaimsPrincipal user, StaffClaimService claims,
+        CancellationToken cancellationToken) =>
+        TypedResults.Ok(await claims.PayAsync(user.GetUserId(), claimId, request, cancellationToken));
 }

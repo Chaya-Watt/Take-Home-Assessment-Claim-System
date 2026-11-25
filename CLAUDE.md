@@ -2,7 +2,7 @@
 
 Insurance claim system (take-home assessment). Two user groups: **Claimants** (report incidents, track claims, answer info requests, receive decisions) and **Claims staff** (pick up, assess, approve/reject, pay; supervisors also see team workload/performance).
 
-- `backend/` — .NET 10 Web API, SQLite, Kafka. **Current focus.**
+- `backend/` — .NET 10 Web API, SQLite (Kafka notifications only if time permits). **Current focus.**
 - `frontend/` — Angular 22. Not started; planned after the backend.
 - `docs/backend-plan.md` — approved backend plan, domain model, and phase status. Read it before starting a phase.
 
@@ -44,6 +44,6 @@ Each layer exposes `AddApplication()` / `AddInfrastructure(config)` in its `Depe
 ## Working agreement
 - Work **one phase at a time** (see `docs/backend-plan.md`). Each phase adds its own tests and must pass `dotnet build -warnaserror` + `dotnet test` before it is done; then stop for review.
 - Keep setup minimal: add config/tooling/packages only in the phase that needs them.
-- Keep scope to what the brief asks (it is a take-home): no file uploads; Kafka stays a simple publish + one consumer.
+- Keep scope to what the brief asks (it is a take-home): no file uploads, no statistics reports (only the supervisor dashboard). Kafka notifications are deferred to "if time permits" in the plan.
 - Edit files with editor tools so changes are visible as diffs; use the shell for build/test.
 - Update the phase status table in `docs/backend-plan.md` when a phase completes.

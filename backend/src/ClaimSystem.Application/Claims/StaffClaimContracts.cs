@@ -20,6 +20,14 @@ public sealed record RequestInformationRequest(string Message, DateOnly? DueDate
 
 public sealed record AssessClaimRequest(long AssessedAmount, string Summary);
 
+/// <summary>ApprovedAmount may be lower than the assessed amount (e.g. deductible); Note is optional.</summary>
+public sealed record ApproveClaimRequest(long ApprovedAmount, string? Note);
+
+public sealed record RejectClaimRequest(string Reason);
+
+/// <summary>Payment happens outside the system (bank transfer); staff records its reference.</summary>
+public sealed record PayClaimRequest(string PaymentReference);
+
 public sealed record StaffClaimSummaryResponse(
     Guid Id,
     string ClaimNumber,

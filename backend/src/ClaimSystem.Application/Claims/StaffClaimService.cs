@@ -41,6 +41,18 @@ public sealed class StaffClaimService(
         Guid staffId, Guid claimId, AssessClaimRequest request, CancellationToken cancellationToken = default) =>
         ActAsync(claimId, claim => claim.Assess(staffId, request.AssessedAmount, request.Summary, Now()), cancellationToken);
 
+    public Task<StaffClaimDetailResponse> ApproveAsync(
+        Guid staffId, Guid claimId, ApproveClaimRequest request, CancellationToken cancellationToken = default) =>
+        ActAsync(claimId, claim => claim.Approve(staffId, request.ApprovedAmount, request.Note, Now()), cancellationToken);
+
+    public Task<StaffClaimDetailResponse> RejectAsync(
+        Guid staffId, Guid claimId, RejectClaimRequest request, CancellationToken cancellationToken = default) =>
+        ActAsync(claimId, claim => claim.Reject(staffId, request.Reason, Now()), cancellationToken);
+
+    public Task<StaffClaimDetailResponse> PayAsync(
+        Guid staffId, Guid claimId, PayClaimRequest request, CancellationToken cancellationToken = default) =>
+        ActAsync(claimId, claim => claim.Pay(staffId, request.PaymentReference, Now()), cancellationToken);
+
     /// <summary>Load → run one domain action → save → return the updated claim.</summary>
     private async Task<StaffClaimDetailResponse> ActAsync(Guid claimId, Action<Claim> action, CancellationToken cancellationToken)
     {

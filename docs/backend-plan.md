@@ -1,4 +1,4 @@
-# แผนงาน Backend — ระบบ Claim ประกัน (.NET 10 + SQLite + Kafka)
+# แผนงาน Backend — ระบบ Claim ประกัน (.NET 10 + SQLite)
 
 ## สถานะ
 | Phase | หัวข้อ | สถานะ |
@@ -9,19 +9,19 @@
 | 3 | Authentication / Authorization | ✅ เสร็จ |
 | 4 | Claimant: แจ้งเหตุและติดตามสถานะ | ✅ เสร็จ |
 | 5 | Staff: รับเคลมและประเมิน | ✅ เสร็จ |
-| 6 | ตัดสินผลและจ่ายค่าสินไหม | ⏳ ถัดไป |
-| 7 | Kafka: events + notification consumer | — |
-| 8 | Reporting | — |
-| 9 | Hardening + เอกสาร | — |
+| 6 | ตัดสินผลและจ่ายค่าสินไหม | ✅ เสร็จ |
+| 7 | Supervisor dashboard | ⏳ ถัดไป |
+| 8 | เอกสาร (README) | — |
+| — | Kafka notification | ถ้ามีเวลา (ดูท้ายเอกสาร) |
 
 ## ข้อตกลงหลัก
-- **Modular monolith** (Web API ตัวเดียว) + **Kafka เป็น event bus** สำหรับ claim events (แบบเรียบง่าย ดู Phase 7)
+- **Modular monolith** (Web API ตัวเดียว) ส่วน Kafka ทำเป็นงานเสริมถ้ามีเวลา (ดู "ถ้ามีเวลา")
 - **Scope ให้พอดีกับงานส่ง test**: ทำเฉพาะที่โจทย์ขอ ตัดการแนบไฟล์ออก (claimant ตอบคำขอข้อมูลเป็นข้อความ)
 - **เวลา**: timestamp เก็บและส่งเป็น UTC ให้ FE แปลงเป็นเวลาเครื่องเอง ส่วนกฎที่เกี่ยวกับ "วันนี้" ใช้ปฏิทิน `Asia/Bangkok` (`BusinessCalendar`)
 - **Minimal APIs**: แยกไฟล์ endpoint ตาม feature และจัดกลุ่มด้วย `MapGroup`
 - **JWT ที่ระบบออกเอง** แยก role ได้แก่ `Claimant`, `Staff`, `Supervisor`
 - **Staff อนุมัติหรือปฏิเสธเคลมได้เองทุกเคส** (ไม่มีวงเงินอนุมัติ และไม่มีขั้นรอ Supervisor อนุมัติ)
-- **Supervisor** ทำได้ทุกอย่างเหมือน Staff และดู dashboard workload/performance ของ**ทั้งทีม**ได้ ส่วน Staff ทั่วไปดูได้เฉพาะของตัวเอง
+- **Supervisor** ทำได้ทุกอย่างเหมือน Staff และดู dashboard ของทีมได้ว่าใครดูเคลมไหนอยู่ เคลมไหนยังไม่มีคนรับ และเคลมค้างที่สถานะไหน (ไม่ทำ report เชิงสถิติ/performance)
 - **Setup ให้น้อยที่สุด**: config, package และ tooling จะเพิ่มเฉพาะใน phase ที่ได้ใช้จริง
 
 ## โครงสร้าง (Clean Architecture ตามแนวทางของ Microsoft)
@@ -148,26 +148,34 @@ Transition ทั้งหมดอยู่ใน `Claim` aggregate ([Claim.cs]
 - `ConcurrencyExceptionHandler`: save ชนกัน (`DbUpdateConcurrencyException`) ได้ **409** `concurrency_conflict`
 - Tests: flow รับงาน → ขอข้อมูล → claimant ตอบ → ประเมิน, queue Unassigned/Mine, supervisor ทำงานได้, รับงานซ้ำ 409, รับงานพร้อมกัน 2 คน (ได้ 200 + 409), staff ที่ไม่ได้รับงาน 403, ยอดเกิน 400, due date ย้อนหลัง 400, claimant อื่นตอบ 404, claimant เรียก staff endpoint 403
 
-### Phase 6 — ตัดสินผลและจ่ายค่าสินไหม
-- `POST /api/staff/claims/{id}/approve`, `.../reject` (ต้องมีเหตุผล), `.../pay` (สร้าง reference แบบ mock)
-- Tests: happy path จนถึง Paid และ rejection path
+### Phase 6 — ตัดสินผลและจ่ายค่าสินไหม ✅
+- `POST /api/staff/claims/{id}/approve` (`approvedAmount` ≤ ยอดประเมิน, `note` ไม่บังคับ) → Approved
+- `POST /api/staff/claims/{id}/reject` (`reason` บังคับ, จาก UnderReview/Assessed) → Rejected
+- `POST /api/staff/claims/{id}/pay` (`paymentReference` ที่ staff กรอก เพราะการโอนเงินเกิดนอกระบบ) → Paid
+- Rejected และ Paid เป็นสถานะจบ ทำอะไรต่อไม่ได้ (409) และ claimant เห็นยอดอนุมัติ เหตุผล และเลขอ้างอิงการจ่ายใน `GET /api/claims/{id}`
+- Tests: approve → pay แล้ว claimant เห็นผลครบ, reject แล้ว claimant เห็นเหตุผลและทำต่อไม่ได้, อนุมัติเกินยอดประเมิน 400, reject ไม่มีเหตุผล 400, pay ก่อนอนุมัติ 409, staff ที่ไม่ได้รับงาน 403
 
-### Phase 7 — Kafka: claim events + notification consumer (แบบเรียบง่าย)
-- `docker-compose.yml`: Kafka (KRaft) + kafka-ui
-- ทุกครั้งที่เคลมเปลี่ยนสถานะ publish event `ClaimStatusChanged` ไป topic `claims.events` (key = ClaimId เพื่อรักษาลำดับต่อเคลม) ด้วย `Confluent.Kafka`
-- Consumer 1 ตัวสร้าง `Notification` ให้ claimant และ `GET /api/notifications`
-- ไม่ทำ transactional outbox แต่จะอธิบาย trade-off ใน README (publish หลัง save สำเร็จ ถ้า Kafka ล่มตอนนั้น event จะหาย)
-- Tests ไม่ต้องใช้ Kafka จริง (ใช้ fake publisher)
+### Phase 7 — Supervisor dashboard
+`GET /api/supervisor/dashboard` (`SupervisorOnly`) คำนวณสดจากตาราง Claims ไม่มีตารางเพิ่ม ตอบ 3 คำถาม:
+- **เคลมค้างที่สถานะไหน**: จำนวนเคลมแยกตามสถานะ
+- **เคลมไหนยังไม่มีคนรับ**: จำนวน + รายการ Submitted ที่รอนานที่สุด
+- **ใครดูเคลมไหนอยู่**: staff/supervisor แต่ละคนถืองานที่ยังไม่จบกี่ใบ แยกตามสถานะ พร้อมรายการเคลม
+- รายการเคลมที่ยังไม่จบซึ่งค้างอยู่ในสถานะปัจจุบันนานที่สุด (สถานะ, คนรับ, ค้างมาตั้งแต่เมื่อไหร่)
+- ดูรายละเอียดเคลมต่อได้ด้วย `GET /api/staff/claims/{id}` ที่มีอยู่แล้ว
+- Tests: ตัวเลขเปลี่ยนตามที่สร้าง/รับ/ตัดสินเคลม, Staff เรียกได้ 403
 
-### Phase 8 — Reporting
-- `GET /api/reports/me` (Staff), `GET /api/reports/team/workload` และ `GET /api/reports/team/performance?from=&to=` (Supervisor)
-- Tests: ตัวเลขจาก seed scenario ถูกต้อง
+### Phase 8 — เอกสาร
+- README (วิธีรัน, seed accounts, state machine, API overview, trade-off ที่เลือก, สิ่งที่จะทำถ้ามีเวลา) และ `.http` ครบทุก endpoint
 
-### Phase 9 — เอกสาร
-- README (วิธีรัน, seed accounts, state machine, API overview, event, trade-off ที่เลือก) และ `.http` ครบทุก endpoint
+## ถ้ามีเวลา: แจ้งผลให้ลูกค้าผ่าน Kafka
+ตอนนี้ claimant ต้องเปิดดูสถานะเอง (`GET /api/claims/{id}`) ถ้ามีเวลาจะทำการแจ้งเตือนแบบ async:
+- ทุกครั้งที่เคลมเปลี่ยนสถานะ publish event `ClaimStatusChanged` ไป Kafka topic `claims.events` (key = ClaimId เพื่อรักษาลำดับต่อเคลม)
+- Consumer สร้าง notification ให้ลูกค้า เช่น ถูกขอข้อมูลเพิ่ม, ผลอนุมัติ/ปฏิเสธ, **ชำระเงินแล้ว (พร้อมเลขอ้างอิง)** และ `GET /api/notifications`
+- ไม่ต้อง realtime เพราะลูกค้าได้รับช้าไปไม่กี่วินาทีก็ไม่เป็นไร การแยกเป็น event ทำให้ API ไม่ต้องรอระบบแจ้งเตือน (email/SMS/push) และเพิ่มช่องทางใหม่ได้โดยไม่แก้ flow เคลม
+- `docker-compose.yml` (Kafka KRaft + kafka-ui) และ fake publisher สำหรับ tests
+- ถ้าจะให้ event ไม่หายเมื่อ Kafka ล่ม ให้ใช้ transactional outbox (เขียน event ลง DB ใน transaction เดียวกับเคลม แล้วค่อย publish)
 
 ## Verification (end-to-end)
 1. `cd backend && dotnet build -warnaserror && dotnet test`
-2. `docker compose up -d` แล้ว `dotnet run --project src/ClaimSystem.Api` และเปิด `/scalar`
-3. ไล่ flow: แจ้งเหตุ → รับงาน → ขอข้อมูล → ตอบ → ประเมิน → อนุมัติ → จ่าย → claimant เห็น Paid และได้ notification → supervisor ดู dashboard
-4. เช็ค kafka-ui ว่าใน topic `claims.events` มี event ครบตามลำดับ
+2. `dotnet run --project src/ClaimSystem.Api` แล้วเปิด `/scalar` หรือใช้ `ClaimSystem.Api.http`
+3. ไล่ flow: แจ้งเหตุ → รับงาน → ขอข้อมูล → ตอบ → ประเมิน → อนุมัติ → จ่าย → claimant เห็น Paid → supervisor ดู dashboard

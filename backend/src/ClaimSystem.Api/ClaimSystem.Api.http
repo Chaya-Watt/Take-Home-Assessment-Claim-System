@@ -121,3 +121,31 @@ Content-Type: application/json
   "assessedAmount": 3500000,
   "summary": "Repair quote checked; bumper and tail light"
 }
+
+### Approve (amount ≤ assessed amount; note optional)
+POST {{host}}/api/staff/claims/{{claimId}}/approve
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "approvedAmount": 3000000,
+  "note": "Deductible 5,000 THB applied"
+}
+
+### Reject (from UnderReview or Assessed; reason required)
+POST {{host}}/api/staff/claims/{{claimId}}/reject
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "reason": "Damage happened before the policy started"
+}
+
+### Record payment (after approval; transfer made outside the system)
+POST {{host}}/api/staff/claims/{{claimId}}/pay
+Authorization: Bearer {{staffToken}}
+Content-Type: application/json
+
+{
+  "paymentReference": "TRF-20261125-0001"
+}
