@@ -52,7 +52,7 @@ const pageSize = 10;
               @for (claim of result.items; track claim.id) {
                 <tr>
                   <td><a [routerLink]="['/claims', claim.id]">{{ claim.claimNumber }}</a></td>
-                  <td>{{ claim.incidentType | incidentType }}, {{ claim.incidentDate | date: 'mediumDate' : 'UTC' }}</td>
+                  <td>{{ claim.incidentType | incidentType }}, {{ claim.incidentDate | date: 'mediumDate' }}</td>
                   <td>{{ claim.claimedAmount | thb }}</td>
                   <td><app-status-badge [status]="claim.status" /></td>
                   <td>{{ claim.submittedAt | date: 'medium' }}</td>

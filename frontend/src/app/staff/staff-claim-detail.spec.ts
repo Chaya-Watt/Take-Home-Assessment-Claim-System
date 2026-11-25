@@ -39,6 +39,7 @@ describe('StaffClaimDetail', () => {
     expect(element().textContent).toContain('Somchai Jaidee');
     expect(element().textContent).toContain('POL-MTR-0001');
     expect(element().textContent).toContain('฿40,000.00');
+    expect(element().textContent).toContain('Collision on Nov 20, 2026'); // API sent "2026-11-20"
   });
 
   it('picks up a submitted claim and then offers the review actions', async () => {

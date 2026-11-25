@@ -28,7 +28,7 @@ npm run gen:api    # regenerate src/app/core/api/schema.d.ts from the running ba
 - Forms: Signal Forms with `[formRoot]` + `submission.action`; return `{ kind: 'server', message: errorMessage(e) }` for API errors and show `form().errors()` in `<app-error-alert>`. Each input gets a `<label for>`, `[attr.aria-invalid]="ariaInvalid(field())"`, `aria-describedby` and an `<app-field-error>` below it.
 - Route params / query params / route data reach components as `input()`s (`withComponentInputBinding`).
 - Reads: `httpResource` in the page (guard with `hasValue()`; show `errorMessage(resource.error())`). Writes: a `@Service()` API class returning `Promise<updated entity>`; set it back with `resource.set(updated)`.
-- Dates: timestamps (`...At`) with `date: 'medium'` (local time); `DateOnly` fields (`incidentDate`, `dueDate`) with `date: 'mediumDate' : 'UTC'` so the calendar day never shifts.
+- Dates: timestamps (`...At`, UTC with `Z`) with `date: 'medium'` → shown in local time. `DateOnly` fields (`incidentDate`, `dueDate`, `"2026-11-25"`) with plain `date: 'mediumDate'` and **no timezone argument**: DatePipe parses a date-only string as *local* midnight, so adding `'UTC'` would shift it to the previous day in UTC+ zones (bug found in manual testing).
 - Signal Forms set `min`/`max`/`required` attributes themselves: don't put them on `[formField]` inputs (NG8022); use validators.
 
 ## Testing (Vitest)

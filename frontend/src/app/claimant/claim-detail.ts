@@ -32,7 +32,7 @@ import { ClaimantApi } from './claimant-api';
           <h2 id="open-request-heading">We need more information</h2>
           <p>{{ request.message }}</p>
           @if (request.dueDate) {
-            <p>Please answer by {{ request.dueDate | date: 'mediumDate' : 'UTC' }}.</p>
+            <p>Please answer by {{ request.dueDate | date: 'mediumDate' }}.</p>
           }
           <app-answer-request [claimId]="c.id" [request]="request" (answered)="claim.set($event)" />
         </article>
@@ -66,7 +66,7 @@ import { ClaimantApi } from './claimant-api';
           <dt>Policy</dt>
           <dd>{{ c.policyNumber }}</dd>
           <dt>Incident</dt>
-          <dd>{{ c.incidentType | incidentType }} on {{ c.incidentDate | date: 'mediumDate' : 'UTC' }}</dd>
+          <dd>{{ c.incidentType | incidentType }} on {{ c.incidentDate | date: 'mediumDate' }}</dd>
           <dt>Location</dt>
           <dd>{{ c.location }}</dd>
           <dt>Description</dt>

@@ -54,6 +54,7 @@ describe('WorkQueue', () => {
     expect(tab('Waiting to be picked up').getAttribute('aria-pressed')).toBe('true');
     const row = element().querySelector('tbody tr')!;
     expect(row.textContent).toContain('CLM-2026-000001');
+    expect(row.textContent).toContain('Collision, Nov 20, 2026'); // API sent "2026-11-20"
     expect(row.textContent).toContain('Nobody yet');
     expect(row.querySelector('a')?.getAttribute('href')).toBe('/staff/claims/claim-1');
   });

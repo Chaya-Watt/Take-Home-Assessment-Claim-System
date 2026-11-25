@@ -37,6 +37,30 @@ describe('ClaimDetail', () => {
     expect(element().querySelectorAll('.timeline li')).toHaveLength(1);
   });
 
+  it('shows calendar dates (incident date, due date) on the same day the API sent', async () => {
+    // Regression: formatting "2026-11-20" with timeZone 'UTC' showed Nov 19 in UTC+ zones (e.g. Bangkok).
+    await render(
+      fakeClaim({
+        status: 'PendingInformation',
+        incidentDate: '2026-11-20',
+        informationRequests: [
+          {
+            id: 'request-1',
+            message: 'Photos please',
+            dueDate: '2026-12-02',
+            requestedAt: '2026-11-21T03:00:00Z',
+            responseText: null,
+            respondedAt: null,
+            isOpen: true,
+          },
+        ],
+      }),
+    );
+
+    expect(element().textContent).toContain('Collision on Nov 20, 2026');
+    expect(element().textContent).toContain('Please answer by Dec 2, 2026.');
+  });
+
   it('withdraws a submitted claim after confirmation', async () => {
     await render(fakeClaim({ status: 'Submitted' }));
 

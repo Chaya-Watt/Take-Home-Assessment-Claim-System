@@ -8,7 +8,21 @@ Insurance claim system for two groups of users:
 | Part | Stack | Status |
 |---|---|---|
 | `backend/` | .NET 10 Minimal API, EF Core + SQLite, JWT | Done |
-| `frontend/` | Angular 22, Pico.css | In progress — see [docs/frontend-plan.md](docs/frontend-plan.md) |
+| `frontend/` | Angular 22 (signals, Signal Forms), Pico.css | Done |
+
+## Quick start
+
+Requires the .NET 10 SDK and Node.js 22.22+ / 24.15+ (details below). Two terminals:
+
+```bash
+# terminal 1 — API on http://localhost:5106 (creates and seeds the SQLite database)
+cd backend && dotnet run --project src/ClaimSystem.Api
+
+# terminal 2 — web app on http://localhost:4200
+cd frontend && npm install && npm start
+```
+
+Open http://localhost:4200 and sign in with a [demo account](#demo-accounts) (password `Password123!`).
 
 ## Run the backend
 
@@ -90,6 +104,8 @@ npm test           # unit tests (Vitest)
 npm run gen:api    # regenerate API types from the running backend's OpenAPI document
 ```
 
+From an IDE, run the `start` npm script in `frontend/`. Port 4200 in use: `npm start -- --port 4300`.
+
 ### Demo accounts
 
 All passwords are `Password123!`.
@@ -101,16 +117,30 @@ All passwords are `Password123!`.
 | `staff1@example.com`, `staff2@example.com` | Staff | |
 | `supervisor@example.com` | Supervisor | |
 
-New claimants can register via `POST /api/auth/register`. Staff accounts cannot be created through the API.
+New claimants can create an account on the **Register** page (or `POST /api/auth/register`). Staff accounts cannot be created through the API.
 
-### Try the whole flow
+### Screens
 
-1. Log in as `claimant1` → `GET /api/policies/mine` → `POST /api/claims`.
-2. Log in as `staff1` → `GET /api/staff/claims?queue=Unassigned` → `POST .../assign` → `POST .../information-requests`.
-3. As `claimant1` → `POST /api/claims/{id}/information-requests/{requestId}/response`.
-4. As `staff1` → `POST .../assessment` → `POST .../approve` → `POST .../pay`.
-5. As `claimant1` → `GET /api/claims/{id}` shows status `Paid`, the approved amount, the payment reference and the timeline.
-6. As `supervisor` → `GET /api/supervisor/dashboard`.
+| Role | Page | What it does |
+|---|---|---|
+| Everyone | `/login`, `/register` | Sign in (lands on the role's home page); claimants can create an account |
+| Claimant | `/claims` | My claims, newest first, with a status filter and paging |
+| | `/claims/new` | Report an incident: the incident types follow the chosen policy; the amount is typed in baht |
+| | `/claims/:id` | Details, timeline, decision and payment; answer an information request; withdraw while `Submitted` |
+| Staff & Supervisor | `/staff/claims` | Work queue: *Waiting to be picked up* / *My claims* / *All claims*, status filter, paging |
+| | `/staff/claims/:id` | Claimant, policy, incident, assessment, timeline, and the actions allowed now (pick up, ask for information, assess, approve, reject, record payment) |
+| Supervisor | `/supervisor` | Team dashboard: claims per status, claims waiting to be picked up, claims stuck longest in a status, each officer's open claims (each links to the claim) |
+
+### Try the whole flow (in the web app)
+
+1. **claimant1** → *Report an incident* → choose `POL-MTR-0001`, *Collision*, an amount → *Submit claim*.
+2. **staff1** → *Work queue* → open the new claim → *Pick up this claim* → *Ask the claimant for more information*.
+3. **claimant1** → open the claim → answer the question.
+4. **staff1** → *Record the assessment* → *Approve the claim* (try a lower amount and a note) → *Record the payment*.
+5. **claimant1** → the claim shows *Paid*, the approved amount, the note, the payment reference and the full timeline.
+6. **supervisor** → *Dashboard* shows the counts; open any claim from there and act on it like staff.
+
+The same flow without the UI is in [`ClaimSystem.Api.http`](backend/src/ClaimSystem.Api/ClaimSystem.Api.http).
 
 ## Claim lifecycle
 
@@ -186,6 +216,19 @@ backend/tests/
 
 A request flows **endpoint → service → domain method → save**. Endpoints read the user id from the token and pass it in. The domain decides whether the action is allowed and throws a `DomainException` with a code, which the API maps to the table above.
 
+```
+frontend/src/app/
+  core/api        Types generated from the backend's OpenAPI document (schema.d.ts) + short aliases, error helpers
+  core/auth       AuthStore (session in signals + localStorage), bearer-token interceptor, auth/role guards
+  core/ui         Shared pieces: money pipe, status badge, timeline, pager, error and field messages
+  auth/           Login, register
+  claimant/       My claims, report an incident, claim detail            (lazy route /claims)
+  staff/          Work queue, claim detail + one small form per action     (lazy route /staff/claims)
+  supervisor/     Team dashboard                                           (lazy route /supervisor)
+```
+
+Pages read with `httpResource` (signals for value/loading/error) and change data through small `@Service()` API classes that return the updated claim, so the page updates without reloading. Route guards mirror the backend policies; the backend still enforces every rule.
+
 ## Design decisions
 
 - **Money as `long` satang.** It's exact, and SQLite can't `SUM`/`ORDER BY` `decimal` server-side.
@@ -195,6 +238,10 @@ A request flows **endpoint → service → domain method → save**. Endpoints r
 - **Self-registration always creates a Claimant.** A `role` field in the request is ignored.
 - **The supervisor dashboard is computed live** from the claims and history tables, with no extra tables. Open claims are grouped in memory, which is fine at team scale and can move to SQL aggregates if needed.
 - **Integration tests use the same `claims.db` as `dotnet run`.** This keeps setup to zero. Tests only assert on data they create, so they can be re-run; delete the file to reset.
+- **Frontend types come from the API, not hand-written DTOs.** `npm run gen:api` regenerates them from `/openapi/v1.json`; after a backend change, `ng build` points at every place that no longer matches.
+- **The dev server proxies `/api` to the backend**, so the app uses relative URLs: no environment files, no CORS in development.
+- **Client-side checks mirror the backend rules** (e.g. incident types per policy, amounts within limits) for quick feedback; the backend remains the source of truth and its messages are shown as they are.
+- **Accessibility:** labels on every input with linked error messages, a skip link, focus moved to the page heading on navigation, `aria-current` in the menu, and status colours that only decorate text. Pico.css keeps the UI plain but readable.
 
 ## Out of scope / next steps
 
@@ -211,4 +258,4 @@ Kept out on purpose to match the brief:
 3. This doesn't need to be real-time. Decoupling means the claim API never waits on email/SMS/push, and new channels can be added without touching the claim flow.
 4. To guarantee no event is lost if Kafka is down, write events to an **outbox table** in the same transaction as the claim and publish them from a background worker.
 
-The detailed phase-by-phase plan and decisions are in [docs/backend-plan.md](docs/backend-plan.md) (Thai).
+The detailed phase-by-phase plans and decisions are in [docs/backend-plan.md](docs/backend-plan.md) and [docs/frontend-plan.md](docs/frontend-plan.md) (Thai).

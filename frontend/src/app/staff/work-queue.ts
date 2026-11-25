@@ -74,7 +74,7 @@ const tabs: readonly { value: QueueTab; label: string }[] = [
               @for (claim of result.items; track claim.id) {
                 <tr>
                   <td><a [routerLink]="['/staff/claims', claim.id]">{{ claim.claimNumber }}</a></td>
-                  <td>{{ claim.incidentType | incidentType }}, {{ claim.incidentDate | date: 'mediumDate' : 'UTC' }}</td>
+                  <td>{{ claim.incidentType | incidentType }}, {{ claim.incidentDate | date: 'mediumDate' }}</td>
                   <td>{{ claim.claimedAmount | thb }}</td>
                   <td><app-status-badge [status]="claim.status" /></td>
                   <td>{{ handledBy(claim) }}</td>

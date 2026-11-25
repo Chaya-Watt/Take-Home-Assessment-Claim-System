@@ -49,7 +49,7 @@ describe('MyClaims', () => {
 
     const row = element().querySelector('tbody tr')!;
     expect(row.textContent).toContain('CLM-2026-000001');
-    expect(row.textContent).toContain('Water damage');
+    expect(row.textContent).toContain('Water damage, Nov 20, 2026'); // same calendar day as the API's "2026-11-20"
     expect(row.textContent).toContain('฿45,000.00');
     expect(row.querySelector('a')?.getAttribute('href')).toBe('/claims/claim-1');
     expect(element().querySelector('.pager')?.textContent).toContain('Page 1 of 1');

@@ -8,7 +8,7 @@
 | F2 | Claimant | ✅ เสร็จ |
 | F3 | Staff (Supervisor ใช้ร่วม) | ✅ เสร็จ |
 | F4 | Supervisor dashboard | ✅ เสร็จ |
-| F5 | ตรวจรอบสุดท้าย + เอกสาร | ⏳ ถัดไป |
+| F5 | ตรวจรอบสุดท้าย + เอกสาร | ✅ เสร็จ (รอผลทดสอบด้วยมือตาม checklist) |
 
 ## เป้าหมาย
 หน้าเว็บที่ **ใช้งาน API ได้จริงครบทุก role** ไม่เน้นความสวย
@@ -217,7 +217,68 @@ Supervisor เข้าคิวงาน รับงาน ขอข้อม�
   - ปุ่ม refresh
 - **Tests:** dashboard render จากข้อมูลจำลอง
 
-### F5 — ตรวจรอบสุดท้าย + เอกสาร
+### F5 — ตรวจรอบสุดท้าย + เอกสาร ✅
+**สิ่งที่ตรวจอัตโนมัติแล้ว**
+- Gate: backend 181 tests และ frontend 98 tests ผ่าน, `ng build` ผ่าน
+- **E2E ผ่าน dev-server proxy (27/27 ผ่าน):** ยิง request ลำดับเดียวกับที่หน้าจอเรียก ผ่าน `http://localhost:4200/api` → backend จริง
+  - deep link ทุกหน้าเปิดแอปได้
+  - รหัสผิดได้ 401 พร้อมข้อความ, claimant เรียก API ของ staff ได้ 403
+  - แจ้งเหตุ → อยู่ในคิว "Waiting to be picked up" → staff1 รับงาน (staff2 รับซ้ำได้ 409) → ขอข้อมูล → claimant ตอบ
+  - ประเมิน → อนุมัติเกินยอดได้ 400 → อนุมัติ → จ่าย
+  - claimant เห็น Paid + ยอด + หมายเหตุ + เลขอ้างอิง + timeline ครบ 7 ขั้น, เวลาเป็น UTC
+  - dashboard: Paid +1 และเคลมที่จ่ายแล้วหายจาก workload
+- **ไม่ได้เพิ่ม axe-core** (ผู้ใช้เลือกตรวจ accessibility ด้วยมือ)
+
+**บั๊กที่เจอจากการทดสอบด้วยมือ**
+1. **วันที่เกิดเหตุแสดงเลื่อนไป 1 วัน** (API ส่ง `2026-11-25` แต่จอแสดง Nov 24)
+   - สาเหตุ: ใช้ `date: 'mediumDate' : 'UTC'` แต่ DatePipe parse string แบบวันที่อย่างเดียวเป็นเที่ยงคืน*เวลาเครื่อง* พอแสดงเป็น UTC ในโซน UTC+7 จึงถอยไปวันก่อน
+   - แก้: เอา `'UTC'` ออกทั้ง 6 จุด (incidentDate, dueDate) และเพิ่ม test ที่เช็ควันที่บนจอ 4 หน้า (รวม 99 tests)
+
+**เอกสาร:** README เพิ่ม Quick start (รันสองฝั่ง), ตาราง Screens ต่อ role, flow ทดลองผ่านหน้าเว็บ, โครงสร้าง frontend และ design decisions ฝั่ง frontend
+
+**Checklist ทดสอบด้วยมือ** (รัน backend + `npm start` แล้วเปิด http://localhost:4200, รหัสผ่านทุกบัญชี `Password123!`)
+
+*Claimant (`claimant1@example.com`)*
+- [ ] Login แล้วไปหน้า My claims และเมนูมี "My claims" + "Report an incident"
+- [ ] Report an incident:
+  - ประเภทเหตุถูกปิดจนกว่าจะเลือก policy
+  - Motor แสดง Collision/Theft/Flood/Glass, เปลี่ยนเป็น Property แล้วรายการเปลี่ยน
+- [ ] กดส่งตอนฟอร์มว่าง: ทุกช่องขึ้นข้อความแดงใต้ช่อง
+- [ ] ใส่ยอดเกินทุนประกัน (เช่น 600000 กับ Motor) แล้วขึ้นข้อความ ไม่ส่ง
+- [ ] ส่งสำเร็จแล้วไปหน้ารายละเอียด: ยอดแสดงเป็น ฿, เวลาเป็นเวลาเครื่อง, timeline 1 แถว
+- [ ] My claims: เคลมใหม่อยู่บนสุด, filter สถานะ "Withdrawn" แล้วรายการเปลี่ยน
+- [ ] ยกเลิกเคลม (Withdraw → ยืนยัน) แล้วสถานะเปลี่ยนเป็น Withdrawn และปุ่มหายไป
+- [ ] Register บัญชีใหม่ (รหัสผ่านสั้นกว่า 8 ต้องไม่ผ่าน, email ซ้ำได้ข้อความจาก server)
+
+*Staff (`staff1@example.com`, `staff2@example.com`)*
+- [ ] Work queue เปิดที่แท็บ "Waiting to be picked up", สลับแท็บ/filter แล้วรายการเปลี่ยน
+- [ ] เปิดเคลมใหม่ → "Pick up this claim" แล้ว Handled by เป็น You และมีฟอร์ม 3 อัน
+- [ ] staff2 เปิดเคลมเดียวกัน: ไม่มีปุ่ม action และบอกว่าคนอื่นถืองาน
+- [ ] (ทดสอบชนกัน) เปิดเคลม Submitted ใบเดียวกันใน 2 แท็บด้วย staff1 และ staff2 แล้วกดรับงานทีละแท็บ: แท็บหลังขึ้นข้อความ error และหน้าโหลดใหม่
+- [ ] ขอข้อมูล → claimant เห็นกล่อง "We need more information" แล้วตอบ → staff เห็นคำตอบ
+- [ ] ประเมิน (ยอดตั้งต้น = ยอดเคลม) → อนุมัติ (ลองยอดเกินยอดประเมินต้องไม่ผ่าน) → บันทึกการจ่าย
+- [ ] claimant เห็นสถานะ Paid, ยอดอนุมัติ, หมายเหตุ, เลขอ้างอิง
+- [ ] ลองปฏิเสธเคลมอีกใบ (ต้องใส่เหตุผล) แล้ว claimant เห็นเหตุผล
+
+*Supervisor (`supervisor@example.com`)*
+- [ ] Login แล้วไป Dashboard และเมนูมี Dashboard + Work queue
+- [ ] ตัวเลขตามสถานะ, รายการรอรับงาน (มี "รอมาแล้ว …"), workload ต่อคน
+- [ ] กดเลขเคลมจาก dashboard → รับงาน/อนุมัติได้เหมือน staff → กลับมากด Refresh แล้วตัวเลขเปลี่ยน
+
+*สิทธิ์และ session*
+- [ ] พิมพ์ URL ข้าม role (claimant เปิด `/supervisor`, staff เปิด `/claims`) แล้วถูกพากลับหน้าของตัวเอง
+- [ ] ยังไม่ login แล้วเปิด `/claims/new` จะไปหน้า login แล้ว login เสร็จกลับมาหน้าเดิม
+- [ ] Sign out แล้วกด Back ของเบราว์เซอร์: เข้าไม่ได้ ต้อง login ใหม่
+- [ ] (session หมดอายุ) ใน DevTools → Application → Local Storage แก้ `expiresAt` ใน `claim-system.session` เป็นเวลาในอดีต แล้ว reload: กลับไปหน้า login
+
+*Accessibility*
+- [ ] ใช้ keyboard อย่างเดียว (Tab / Shift+Tab / Enter / Space) ทำ flow แจ้งเหตุจนจบได้ และเห็น focus ชัดทุกจุด
+- [ ] กด Tab ครั้งแรกในหน้าจะเห็นลิงก์ "Skip to main content"
+- [ ] เปลี่ยนหน้าแล้ว focus อยู่ที่หัวข้อของหน้าใหม่
+- [ ] extension **axe DevTools** ไม่มี violation ในหน้า: login, register, My claims, Report an incident, claim detail, Work queue, staff claim detail, Dashboard
+- [ ] ลอง dark mode ของระบบ: ตัวหนังสือยังอ่านออก (Pico เปลี่ยนธีมตาม OS)
+
+**แผนเดิม**
 - ไล่ flow ทั้งหมดกับ backend จริง และตรวจ a11y พื้นฐาน (label, focus, contrast ของ Pico)
 - README: วิธีรัน frontend + backend พร้อมกัน, หน้าจอแต่ละ role
 - อัปเดตตารางสถานะในไฟล์นี้

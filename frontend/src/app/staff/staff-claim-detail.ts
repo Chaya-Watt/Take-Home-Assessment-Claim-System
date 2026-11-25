@@ -116,7 +116,7 @@ import { StaffApi } from './staff-api';
         <h2 id="incident-heading">Incident</h2>
         <dl>
           <dt>What happened</dt>
-          <dd>{{ c.incidentType | incidentType }} on {{ c.incidentDate | date: 'mediumDate' : 'UTC' }}, {{ c.location }}</dd>
+          <dd>{{ c.incidentType | incidentType }} on {{ c.incidentDate | date: 'mediumDate' }}, {{ c.location }}</dd>
           <dt>Description</dt>
           <dd>{{ c.description }}</dd>
           <dt>Amount claimed</dt>
@@ -166,7 +166,7 @@ import { StaffApi } from './staff-api';
               @if (request.isOpen) {
                 <em>Waiting for the claimant's answer</em>
                 @if (request.dueDate) {
-                  <em>, due {{ request.dueDate | date: 'mediumDate' : 'UTC' }}</em>
+                  <em>, due {{ request.dueDate | date: 'mediumDate' }}</em>
                 }
               } @else {
                 {{ request.responseText }} <small>(answered {{ request.respondedAt | date: 'medium' }})</small>
